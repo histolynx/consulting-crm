@@ -3,7 +3,7 @@
 #   scripts\claude-login.ps1            sign in (opens browser) and record the config dir in secrets.env
 #   scripts\claude-login.ps1 -Status    show which account HIVE uses
 #   scripts\claude-login.ps1 -Logout    sign HIVE's account out
-param([switch]$Status, [switch]$Logout, [string]$ConfigDir = "$env:USERPROFILE\.hive\claude")
+param([switch]$Status, [switch]$Logout, [string]$Email = '', [string]$ConfigDir = "$env:USERPROFILE\.hive\claude")
 $ErrorActionPreference = 'Stop'
 $exe = (Get-Command claude -ErrorAction SilentlyContinue).Source
 if (-not $exe) {
@@ -18,8 +18,9 @@ if ($Status) { & $exe auth status; exit $LASTEXITCODE }
 if ($Logout) { & $exe auth logout; exit $LASTEXITCODE }
 
 Write-Host "Signing HIVE into Claude (config dir: $ConfigDir)." -ForegroundColor Yellow
-Write-Host "In the browser, choose the Claude account you want HIVE to use." -ForegroundColor Yellow
-& $exe auth login
+Write-Host "TIP: if your browser is already signed in to a different claude.ai account, copy the login URL" -ForegroundColor Yellow
+Write-Host "     printed below into an InPrivate window (Ctrl+Shift+N) so you can pick the right account." -ForegroundColor Yellow
+if ($Email) { & $exe auth login --claudeai --email $Email } else { & $exe auth login --claudeai }
 & $exe auth status
 
 $secrets = "$env:USERPROFILE\.hive\secrets.env"

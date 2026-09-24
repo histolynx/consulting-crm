@@ -22,7 +22,7 @@ DUE = re.compile(r"(?:📅|due::?)\s*(\d{4}-\d{2}-\d{2})")
 FENCE = re.compile(r"```.*?```", re.S)
 INLINE_CODE = re.compile(r"`[^`\n]*`")
 
-SKIP_DIRS = {".hive", ".obsidian", ".git", ".claude", ".trash", "attachments", "_templates"}
+SKIP_DIRS = {".hive", ".obsidian", ".git", ".claude", ".trash", "attachments", "_templates", "_intake"}
 SKIP_FILES = {"CLAUDE.md"}  # agent instructions: its example [[links]] must not become graph nodes
 
 

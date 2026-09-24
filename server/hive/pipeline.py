@@ -42,7 +42,7 @@ def git_commit(vault: Vault, message: str) -> str | None:
 
 
 VAULT_FOLDERS = ["clients", "contacts", "contracts", "projects", "meetings", "emails", "time", "invoices",
-                 "knowledge", "inbox", "outbox", "briefings", "attachments"]
+                 "knowledge", "inbox", "outbox", "briefings", "attachments", "documents", "_intake"]
 VAULT_GITIGNORE = """# volatile HIVE state (audit.jsonl and mail.json ARE tracked)
 .hive/agent-runs/
 .hive/snapshot.json

@@ -60,6 +60,7 @@ def test_write_audits_and_unique_path(vault: Vault):
 def test_hidden_and_template_dirs_skipped(vault: Vault):
     vault.write("_templates/t.md", {"type": "x"}, "")
     vault.write(".hive/x.md", {"type": "x"}, "")
+    vault.write("_intake/unprocessed.md", {"type": "x"}, "")
     vault.write("notes/real.md", {"type": "note"}, "")
     vault.write("CLAUDE.md", {"type": "system"}, 'org: "[[Client]]"')
     assert [n.path for n in vault.load_all()] == ["notes/real.md"]
