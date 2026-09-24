@@ -53,7 +53,9 @@ def _date(s: str) -> str:
 
 
 def parse(csv_text: str) -> list[dict[str, Any]]:
-    reader = csv.DictReader(io.StringIO(csv_text.lstrip("﻿")))
+    if not isinstance(csv_text, str):
+        raise ImportError_("csv must be the text of a Toggl CSV export")
+    reader = csv.DictReader(io.StringIO(csv_text.lstrip("\ufeff")))
     if not reader.fieldnames:
         raise ImportError_("empty CSV")
     cols = {f: ALIASES.get(f.strip().lower()) for f in reader.fieldnames}

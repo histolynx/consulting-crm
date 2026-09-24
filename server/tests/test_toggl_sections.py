@@ -38,6 +38,13 @@ def test_summary_export_is_refused_with_instructions(sym):
         toggl.parse(SUMMARY)
 
 
+def test_non_text_payload_is_a_clean_400(sym):
+    c = TestClient(create_app(sym.root))
+    r = c.post("/api/time/import/preview", json={"csv": {"value": "x"}}, headers=H)
+    assert r.status_code == 400 and "text" in r.json()["detail"]
+    assert toggl.parse("﻿" + DETAILED)  # BOM-prefixed exports parse fine
+
+
 def test_plan_maps_projects_tags_and_flags_unknowns(sym):
     g, tt = Graph.build(sym.load_all()), TimeTracker(sym)
     p = toggl.plan(DETAILED, g, tt)
