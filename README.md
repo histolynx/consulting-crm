@@ -23,6 +23,19 @@ Browser UI (Preact, no build) ◀── FastAPI @127.0.0.1:8787 ◀── graph 
 The first run creates a venv in `%LOCALAPPDATA%\hive\.venv` (outside Google Drive, so thousands of tiny files don't sync)
 and installs hash-locked dependencies.
 
+## Pin it to the taskbar (everyday use)
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install-server.ps1   # background server, starts at every login
+```
+Open http://127.0.0.1:8787 in **Edge** → `⋯` → **Apps → Install HIVE**, then right-click the HIVE taskbar icon → **Pin to taskbar**.
+HIVE is an installable PWA (own window, hex-constellation icon, jump-list shortcuts for Ask / Graph / Log time).
+After updating the code: `scripts\install-server.ps1 -Restart`. Logs: `%LOCALAPPDATA%\hive\server.log`.
+
+## A separate Claude account for HIVE
+`scripts\claude-login.ps1` signs HIVE's agent into its **own** Claude account (a separate `CLAUDE_CONFIG_DIR`),
+e.g. the account tied to the hive mailbox. Your interactive Claude Code keeps its own login. Setup shows which account is active.
+(claude.ai chats and Projects aren't accessible from Claude Code; export what you need into `vault/knowledge/`.)
+
 ## The graph model: markdown is the database
 * **Node** = note (identity = filename, like Obsidian). `type:` in frontmatter: client, contact, contract, project,
   meeting, email, note, invoice, timelog, draft, briefing, profile.

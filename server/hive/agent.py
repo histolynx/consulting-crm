@@ -16,7 +16,7 @@ import threading
 from pathlib import Path
 from typing import Any, Iterator
 
-from .config import find_claude
+from .config import claude_env, find_claude
 from .vault import Vault, split_frontmatter
 
 READ_TOOLS = ["Read", "Glob", "Grep"]
@@ -82,6 +82,7 @@ class Agent:
         self.vault.audit("agent", f"run-{task}", mode, log=log_path.name)
         try:
             cmd = self._cmd(mode, session_id)
+            env = claude_env()
         except Exception as e:  # ConfigError -> surface, never guess
             if mode == "write":
                 _write_lock.release()
@@ -92,7 +93,7 @@ class Agent:
         try:
             proc = subprocess.Popen(cmd, cwd=self.vault.root, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
-                                    creationflags=flags)
+                                    creationflags=flags, env=env)
             assert proc.stdin and proc.stdout and proc.stderr
             proc.stdin.write(prompt)
             proc.stdin.close()

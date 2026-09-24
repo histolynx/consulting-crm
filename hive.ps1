@@ -1,10 +1,12 @@
 # HIVE launcher.
 #   .\hive.ps1            start on your real vault (./vault) and open the browser
-#   .\hive.ps1 -Demo      (re)build the fictional demo vault and start on it
+#   .\hive.ps1 -Demo      (re)build the fictional demo vault and start on it (port 8788)
+#   Everyday use: scripts\install-server.ps1 runs HIVE in the background at login; install it as an app from Edge.
 #   .\hive.ps1 -Setup     create the venv + install hash-locked deps (first run)
 #   .\hive.ps1 -Test      run the test suite
-param([switch]$Demo, [switch]$Setup, [switch]$Test, [int]$Port = 8787)
+param([switch]$Demo, [switch]$Setup, [switch]$Test, [int]$Port = 0)
 $ErrorActionPreference = 'Stop'
+if ($Port -eq 0) { $Port = if ($Demo) { 8788 } else { 8787 } }  # demo gets its own port so it never clashes with the real HIVE
 $root = $PSScriptRoot
 $venv = "$env:LOCALAPPDATA\hive\.venv"
 $py = "$venv\Scripts\python.exe"

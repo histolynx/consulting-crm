@@ -1,4 +1,18 @@
-import { html, openNote } from '../lib.js';
+import { useEffect, useState } from 'preact/hooks';
+import { html, api, openNote } from '../lib.js';
+
+function ClaudeAccount() {
+  const [a, setA] = useState(null);
+  useEffect(() => { api.get('/api/claude/account').then(setA).catch((e) => setA({ error: e.message })); }, []);
+  return html`<div class="card"><h3>✦ Claude account used by HIVE's agent</h3>
+    ${!a ? html`<span class="thinking"><i></i><i></i><i></i></span>` : html`<table class="t"><tbody>
+      <tr><td>Signed in</td><td>${a.loggedIn ? html`<span class="chip green">${a.email}</span> <span class="chip">${a.subscriptionType || a.authMethod}</span>` : html`<span class="chip red">no</span> <span class="dim">${a.error || ''}</span>`}</td></tr>
+      <tr><td>Login source</td><td>${a.dedicated ? html`<span class="chip amber">dedicated HIVE login</span>` : html`<span class="chip">shared with your Claude Code</span>`} <span class="mono dim">${a.configDirectory || ''}</span></td></tr></tbody></table>`}
+    <div style="margin-top:10px">To run HIVE on a <b>different</b> Claude account (e.g. the one tied to your hive mailbox), run
+      <pre class="md" style="background:var(--bg2);padding:10px;border-radius:8px">powershell -ExecutionPolicy Bypass -File scripts\\claude-login.ps1</pre>
+      pick that account in the browser, then restart HIVE. Your everyday Claude Code stays on its own account.</div>
+    <div class="dim" style="font-size:12px">Uses that account's plan limits. Note: claude.ai chats and Projects aren't reachable from Claude Code. Export anything you want HIVE to know into <span class="mono">vault/knowledge/</span>.</div></div>`;
+}
 
 export function Setup({ health }) {
   if (!health) return html`<div class="thinking"><i></i><i></i><i></i></div>`;
@@ -10,12 +24,14 @@ export function Setup({ health }) {
       <tr><td>Gmail</td><td class="mono">${health.gmail_user || '—'}</td><td>${ok(health.mail_configured)}</td></tr>
       <tr><td>Secrets file</td><td class="mono">${health.secrets_file}</td><td></td></tr></tbody></table></div>
 
+    <${ClaudeAccount} />
+
     <div class="card"><h3>✉ Connect Gmail (≈2 minutes)</h3><ol style="margin:0;padding-left:20px;line-height:1.9">
-      <li>Sign in to <b>your-hive-inbox@gmail.com</b> → Google Account → Security → turn on <b>2-Step Verification</b>.</li>
+      <li>Sign in to <b>${health.gmail_user || 'your-hive-inbox@gmail.com'}</b> → Google Account → Security → turn on <b>2-Step Verification</b>.</li>
       <li>Open <span class="mono">myaccount.google.com/apppasswords</span>, create one named <b>HIVE</b>, copy the 16 characters.</li>
       <li>Gmail → Settings → <b>Forwarding and POP/IMAP</b> → make sure IMAP is enabled.</li>
       <li>Create <span class="mono">${health.secrets_file}</span> containing:
-        <pre class="md" style="background:var(--bg2);padding:10px;border-radius:8px">HIVE_GMAIL_USER=your-hive-inbox@gmail.com
+        <pre class="md" style="background:var(--bg2);padding:10px;border-radius:8px">HIVE_GMAIL_USER=${health.gmail_user || 'your-hive-inbox@gmail.com'}
 HIVE_GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx</pre></li>
       <li>In your personal Gmail, forward client threads to the hive address (or set a filter to auto-forward from client domains).</li></ol>
       <div class="dim" style="font-size:12px">The mailbox is opened read-only: HIVE never deletes or marks mail. Claude never sees the password: Python fetches mail, Claude only reads the saved markdown.</div></div>

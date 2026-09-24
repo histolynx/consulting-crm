@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-24: v0.2.0, desktop app and separate Claude account
+- **Logo:** "Hex Constellation" (amber hex + 4-node graph): `web/icons/hive.svg`, PNGs 16–512, multi-size `hive.ico` (`scripts/make_ico.py`).
+- **Installable PWA:** manifest (standalone window, jump-list shortcuts), network-first service worker with an "asleep" page when the server is down.
+- **Background server:** `scripts/install-server.ps1` registers the "HIVE Server" logon task (pythonw, no console, auto-restart, log in `%LOCALAPPDATA%\hive\server.log`). Registered and started on this PC.
+- **Dedicated Claude login:** `HIVE_CLAUDE_CONFIG_DIR` + `scripts/claude-login.ps1`; agent subprocesses use it; `/api/claude/account` and the Setup page show the active account. Missing config dir raises an error instead of silently falling back.
+- `secrets.env` reader tolerates the BOM that PowerShell 5 writes; demo runs on port 8788 so it never clashes with the real app.
+- Tests: 53 passing (new `test_config.py`).
+
 ## 2026-09-24: v0.1.1, public code / private data split
 - Code repo is published to GitHub (public); `vault/` is git-ignored and is now its **own** repo, pushed to a separate private repo.
 - `vault-template/` (schema, agent commands, note templates, placeholder profile) ships publicly; `python -m hive init` scaffolds a vault from it.

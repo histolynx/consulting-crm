@@ -48,6 +48,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; }
 .brand .logo { width: 30px; height: 34px; background: var(--amber); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); box-shadow: 0 0 18px var(--amber); animation: pulse 3.2s ease-in-out infinite; position: relative; }
 .brand .logo::after { content: ""; position: absolute; inset: 7px 6px; background: #111; clip-path: inherit; opacity: .85; }
+.brand .logoimg { width: 36px; height: 36px; animation: pulse 3.2s ease-in-out infinite; }
 .brand b { font-size: 20px; letter-spacing: .28em; }
 .brand small { display: block; color: var(--muted); font-size: 10px; letter-spacing: .18em; margin-top: -3px; }
 @keyframes pulse { 0%,100% { filter: drop-shadow(0 0 2px var(--amber)); } 50% { filter: drop-shadow(0 0 10px var(--amber)); } }

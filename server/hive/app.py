@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import crm, invoices, pipeline
 from .agent import Agent, claude_available
-from .config import SECRETS_FILE, load_settings, read_secrets
+from .config import SECRETS_FILE, claude_account, load_settings, read_secrets
 from .graph import Graph
 from .mail import Mailbox
 from .timetrack import TimeTracker
@@ -111,6 +111,10 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
         return {"vault": str(hive.vault.root), "claude": claude_available(),
                 "mail_configured": bool(s.get("HIVE_GMAIL_USER") and s.get("HIVE_GMAIL_APP_PASSWORD")),
                 "secrets_file": str(SECRETS_FILE), "gmail_user": s.get("HIVE_GMAIL_USER")}
+
+    @app.get("/api/claude/account")
+    def claude_acct():
+        return {**claude_account(), "dedicated": bool(read_secrets().get("HIVE_CLAUDE_CONFIG_DIR"))}
 
     # ---------------- graph ----------------
     @app.get("/api/graph")
@@ -479,6 +483,15 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
     app.mount("/vendor", StaticFiles(directory=web / "vendor"), name="vendor")
     app.mount("/js", StaticFiles(directory=web / "js"), name="js")
     app.mount("/css", StaticFiles(directory=web / "css"), name="css")
+    app.mount("/icons", StaticFiles(directory=web / "icons"), name="icons")
+
+    @app.get("/manifest.webmanifest")
+    def manifest():
+        return FileResponse(web / "manifest.webmanifest", media_type="application/manifest+json")
+
+    @app.get("/sw.js")
+    def service_worker():
+        return FileResponse(web / "sw.js", media_type="text/javascript", headers={"Cache-Control": "no-cache"})
 
     @app.get("/")
     def index():

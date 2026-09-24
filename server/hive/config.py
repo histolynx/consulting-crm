@@ -37,7 +37,7 @@ def load_settings() -> Settings:
 def read_secrets() -> dict[str, str]:
     out: dict[str, str] = {}
     if SECRETS_FILE.exists():
-        for line in SECRETS_FILE.read_text(encoding="utf-8").splitlines():
+        for line in SECRETS_FILE.read_text(encoding="utf-8-sig").splitlines():  # -sig: PowerShell 5 writes a BOM
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -54,6 +54,33 @@ def secret(name: str) -> str:
     if not val:
         raise ConfigError(f"Missing secret {name}. Add it to {SECRETS_FILE} (see README 'Gmail setup').")
     return val
+
+
+def claude_env() -> dict[str, str]:
+    """Environment for the claude subprocess. If HIVE_CLAUDE_CONFIG_DIR is set, HIVE's agent uses that
+    config dir, i.e. its OWN Claude login (e.g. the account tied to the hive mailbox), independent of
+    the account your interactive Claude Code uses."""
+    env = dict(os.environ)
+    cfg = read_secrets().get("HIVE_CLAUDE_CONFIG_DIR")
+    if cfg:
+        p = Path(os.path.expandvars(cfg)).expanduser()
+        if not p.exists():
+            raise ConfigError(f"HIVE_CLAUDE_CONFIG_DIR {p} does not exist; run scripts\\claude-login.ps1")
+        env["CLAUDE_CONFIG_DIR"] = str(p)
+    return env
+
+
+def claude_account() -> dict:
+    """`claude auth status` for the account HIVE's agent will use (no token contents, just identity)."""
+    import json
+    import subprocess
+    try:
+        out = subprocess.run([str(find_claude()), "auth", "status"], env=claude_env(), capture_output=True,
+                             text=True, timeout=20, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        data = json.loads(out.stdout)
+        return {k: data.get(k) for k in ("loggedIn", "email", "subscriptionType", "authMethod", "configDirectory")}
+    except Exception as e:  # noqa: BLE001 - reported to the UI
+        return {"loggedIn": False, "error": str(e)}
 
 
 def _version_key(p: Path) -> tuple[int, ...]:

@@ -24,7 +24,14 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
 
     if a.cmd == "serve":
+        import os
+        from pathlib import Path
+
         import uvicorn
+        if sys.stdout is None or sys.stderr is None:  # pythonw (background task): no console, so log to a file
+            log = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "hive" / "server.log"
+            log.parent.mkdir(parents=True, exist_ok=True)
+            sys.stdout = sys.stderr = open(log, "a", buffering=1, encoding="utf-8")  # noqa: SIM115
         uvicorn.run("hive.app:create_app", factory=True, host="127.0.0.1", port=a.port)
         return 0
 
