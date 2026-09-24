@@ -54,19 +54,19 @@ function Timer() {
     return () => { clearInterval(i); off(); };
   }, []);
   const start = async () => {
-    try { setTimer(await api.post('/api/timer/start', { contract: contract || null, description: desc })); toast('Timer started'); }
+    try { setTimer(await api.post('/api/timer/start', { contract: contract || null, description: desc })); bus.emit('timer-changed'); toast('Timer started'); }
     catch (e) { toast(e.message, 'err'); }
   };
   const stop = async () => {
     const r = await api.post('/api/timer/stop');
-    setTimer(null); setDesc('');
+    setTimer(null); setDesc(''); bus.emit('timer-changed');
     toast(r.entry ? `Logged ${(r.entry.minutes / 60).toFixed(2)}h → ${r.entry.contract || 'no contract'}` : 'Timer under a minute: discarded');
     refreshAll();
   };
   if (timer) {
     const secs = Math.max(0, Math.floor((now - new Date(timer.started).getTime()) / 1000));
     return html`<div class="timer running"><span class="dot"></span>
-      <span title=${timer.description}>${timer.contract || 'No contract'}</span>
+      <span title=${timer.description}>${timer.contract || 'No contract'}${timer.section ? html` <span class="dim">· ${timer.section}</span>` : ''}</span>
       <span class="clock">${fmtClock(secs)}</span>
       <button class="btn primary sm round" onClick=${stop}>■ Stop</button></div>`;
   }

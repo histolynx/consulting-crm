@@ -6,6 +6,7 @@ from typing import Any
 
 from . import invoices
 from .graph import Graph
+from .sections import contract_sections, section_for_tag  # noqa: F401 (re-exported)
 from .timetrack import TimeTracker, _link_target
 
 PIPELINE = ["lead", "proposal", "negotiating", "active", "paused", "complete", "lost"]
@@ -70,7 +71,8 @@ def clients(graph: Graph) -> list[dict[str, Any]]:
 
 def contracts(graph: Graph, tracker: TimeTracker, today: dt.date | None = None) -> list[dict[str, Any]]:
     today = today or dt.date.today()
-    tsum = tracker.summary(graph, today)["by_contract"]
+    tsums = tracker.summary(graph, today)
+    tsum, tsec = tsums["by_contract"], tsums["by_section"]
     inv = invoices.summary(graph, today)["items"]
     out = []
     for p, n in graph.notes.items():
@@ -95,6 +97,11 @@ def contracts(graph: Graph, tracker: TimeTracker, today: dt.date | None = None) 
             "burn": round(hours.get("total", 0.0) / budget, 3) if budget else None,
             "invoiced": round(invoiced, 2), "next_step": m.get("next_step"), "expected_close": m.get("expected_close"),
             "tags": n.tags, "demo": bool(m.get("demo")),
+            "sections": [{**s, "hours": round(tsec.get(p, {}).get(s["name"], 0.0), 2),
+                          "burn": round(tsec.get(p, {}).get(s["name"], 0.0) / float(s["budget_hours"]), 3) if s.get("budget_hours") else None}
+                         for s in contract_sections(m)],
+            "unsectioned_hours": round(tsec.get(p, {}).get("(unsectioned)", 0.0), 2),
+            "toggl_projects": m.get("toggl_projects") or [],
         })
     out.sort(key=lambda c: (PIPELINE.index(c["status"]) if c["status"] in PIPELINE else 99, c["name"].lower()))
     return out

@@ -24,9 +24,15 @@ function InvoiceDoc({ inv, profile, onClose }) {
         <div><div style="color:#888;font-size:11px;text-transform:uppercase">Bill to</div><b>${linkText(inv.client) || '—'}</b><div style="color:#666">${linkText(inv.contract)}</div></div>
         <div style="text-align:right"><div><span style="color:#888">Issued</span> ${inv.issued}</div><div><span style="color:#888">Due</span> <b>${inv.due}</b></div><div><span style="color:#888">Period</span> ${inv.period_start} → ${inv.period_end}</div></div>
       </div>
-      <table><thead><tr><th>Date</th><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+      <table><thead><tr><th>Period</th><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
         <tbody>${(inv.lines || []).map((l) => html`<tr><td>${l.date}</td><td>${l.description}</td><td class="num">${l.qty} ${l.unit}</td><td class="num">${money(l.rate, cur)}</td><td class="num">${money(l.amount, cur)}</td></tr>`)}</tbody></table>
       <div class="total">Total due: ${money(inv.total, cur)}</div>
+      ${inv.timesheet?.length > 0 && html`<div style="margin-top:34px;page-break-before:always">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px">Timesheet</div>
+        <div style="color:#666;font-size:12px">${inv.period_start} → ${inv.period_end} · ${linkText(inv.contract)}</div>
+        <table><thead><tr><th>Date</th><th>Section</th><th>Description</th><th class="num">Hours</th></tr></thead>
+          <tbody>${inv.timesheet.map((t) => html`<tr><td>${t.date}</td><td>${t.section}</td><td>${t.description}</td><td class="num">${t.hours.toFixed(2)}</td></tr>`)}</tbody></table>
+        <div style="text-align:right;font-weight:700">Total hours: ${inv.timesheet.reduce((a, t) => a + t.hours, 0).toFixed(2)}</div></div>`}
       ${profile.payment_instructions && html`<div style="margin-top:30px;padding-top:12px;border-top:1px solid #ddd"><div style="color:#888;font-size:11px;text-transform:uppercase">Payment</div>${profile.payment_instructions}</div>`}
       <div style="margin-top:20px;color:#999;font-size:11px">Thank you for your business.</div>
     </div>

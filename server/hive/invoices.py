@@ -5,6 +5,7 @@ import datetime as dt
 import re
 from typing import Any
 
+from .sections import contract_sections
 from .graph import Graph
 from .timetrack import TimeTracker, _link_target
 from .vault import Vault
@@ -41,13 +42,15 @@ def generate(vault: Vault, graph: Graph, tracker: TimeTracker, contract_path: st
     unit = str(c.meta.get("rate_unit", "hour"))
     currency = str(c.meta.get("currency", "USD"))
     lines: list[dict[str, Any]] = []
+    timesheet: list[dict[str, Any]] = []
     entry_ids: list[str] = []
 
     if unit in ("hour", "day"):
         if rate <= 0:
             raise ValueError(f"contract {c.title} has no `rate` set")
         hpd = float(c.meta.get("hours_per_day", 8))
-        for e in tracker.all_entries():
+        section_hours: dict[str, float] = {}
+        for e in sorted(tracker.all_entries(), key=lambda x: (x["date"], str(x.get("start") or ""))):
             if e.get("status") == "suggested" or not e.get("billable", True) or e.get("invoice"):
                 continue
             if not e.get("contract_name") or graph.resolve(e["contract_name"]) != contract_path:
@@ -56,10 +59,18 @@ def generate(vault: Vault, graph: Graph, tracker: TimeTracker, contract_path: st
             if not (s <= d <= f):
                 continue
             hours = e["minutes"] / 60
-            qty = hours if unit == "hour" else hours / hpd
-            lines.append({"date": e["date"], "description": e.get("description") or "Consulting services",
-                          "qty": round(qty, 2), "unit": unit, "rate": rate, "amount": _money(round(qty, 2) * rate)})
+            sec = e.get("section") or "Consulting services"
+            section_hours[sec] = section_hours.get(sec, 0.0) + hours
+            timesheet.append({"date": e["date"], "section": sec, "description": e.get("description") or "",
+                              "hours": round(hours, 2)})
             entry_ids.append(e["id"])
+        # one invoice line per contract section (SOW-style); the dated timesheet carries the detail
+        order = [x["name"] for x in contract_sections(c.meta)]
+        for sec in sorted(section_hours, key=lambda x: (order.index(x) if x in order else 99, x)):
+            hrs = section_hours[sec]
+            qty = round(hrs if unit == "hour" else hrs / hpd, 2)
+            lines.append({"date": f"{start} → {end}", "description": sec, "qty": qty, "unit": unit,
+                          "rate": rate, "amount": _money(qty * rate)})
     elif unit == "fixed":
         for m in c.meta.get("milestones") or []:
             if m.get("status") == "complete" and not m.get("invoice"):
@@ -84,7 +95,7 @@ def generate(vault: Vault, graph: Graph, tracker: TimeTracker, contract_path: st
         "client": f"[[{client_title}]]" if client_title else None, "contract": f"[[{c.title}]]",
         "issued": issued.isoformat(), "due": (issued + dt.timedelta(days=terms)).isoformat(),
         "period_start": start, "period_end": end, "currency": currency, "total": total,
-        "lines": lines, "entries": entry_ids, "tags": ["invoice"],
+        "lines": lines, "timesheet": timesheet or None, "entries": entry_ids, "tags": ["invoice"],
     }
     meta = {k: v for k, v in meta.items() if v is not None}
     body = render_body(meta)
@@ -112,6 +123,11 @@ def render_body(meta: dict[str, Any]) -> str:
     for x in meta["lines"]:
         out.append(f"| {x['date']} | {str(x['description']).replace('|', '/')} | {x['qty']} {x['unit']} | {x['rate']:,.2f} | {x['amount']:,.2f} |")
     out += ["", f"**Total: {cur} {meta['total']:,.2f}**", ""]
+    if meta.get("timesheet"):
+        out += ["## Timesheet", "", "| Date | Section | Description | Hours |", "|---|---|---|---:|"]
+        for t in meta["timesheet"]:
+            out.append(f"| {t['date']} | {t['section']} | {str(t['description']).replace('|', '/')} | {t['hours']:.2f} |")
+        out += ["", f"**Total hours: {sum(t['hours'] for t in meta['timesheet']):.2f}**", ""]
     return "\n".join(out)
 
 

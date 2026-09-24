@@ -79,6 +79,20 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); display: inline-block; animation: blink 1.2s infinite; }
 @keyframes blink { 50% { opacity: .25; } }
 
+/* ---------- Toggl-style tracker bar (Time view) ---------- */
+.tracker { display: flex; align-items: center; gap: 16px; background: linear-gradient(180deg, var(--panel), #14181e); border: 1px solid var(--line2); border-radius: 14px; padding: 14px 16px 14px 20px; margin-bottom: 16px; }
+.tracker.running { border-color: var(--amber); box-shadow: 0 0 0 4px var(--amber-glow); }
+.tracker .tr-main { flex: 1; min-width: 0; }
+.tracker .tr-input { width: 100%; background: transparent; border: none; outline: none; font-size: 18px; }
+.tracker .tr-desc { font-size: 18px; margin-bottom: 4px; }
+.tracker .tr-clock { font-family: var(--mono); font-size: 28px; color: var(--amber2); min-width: 130px; text-align: right; font-variant-numeric: tabular-nums; }
+.tracker .tr-clock.dim { color: var(--dim); }
+.tracker .tr-btn { width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px; background: var(--amber); color: #15120a; box-shadow: 0 6px 20px rgba(245,165,36,.35); transition: transform .1s; flex: none; }
+.tracker .tr-btn:hover { transform: scale(1.06); }
+.tracker .tr-btn.stop { background: #e0735a; color: #fff; box-shadow: 0 6px 20px rgba(224,115,90,.4); }
+.tracker .tr-bill { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line2); background: transparent; color: var(--dim); cursor: pointer; font-weight: 700; flex: none; }
+.tracker .tr-bill.on { color: var(--green); border-color: rgba(76,195,138,.5); background: rgba(76,195,138,.08); }
+
 /* ---------- primitives ---------- */
 .btn { background: var(--panel2); border: 1px solid var(--line2); color: var(--text); border-radius: 8px; padding: 6px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .btn:hover { border-color: var(--amber); }

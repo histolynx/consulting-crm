@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-24: v0.3.0, contract sections, Toggl-style tracker, Toggl import
+- **Contract sections** (`sections:` with `budget_hours` and `match` tags) act as time-entry tags; add or remove them from the tracker ("+ section").
+  Hours roll up per section against the SOW budget (Time page burn bars; `/api/contracts` → `sections`).
+- **Toggl-style tracker bar** on Time: description, contract, section chips, billable toggle, live clock, big start/stop; ▶ "continue" on any entry; timer carries section and billable.
+- **Toggl CSV import** (`hive/toggl.py`, `/api/time/import[/preview]`): Detailed export only (a Summary export is refused with instructions),
+  project→contract mapping remembered in `toggl_projects`, tag→section via `match`, exact seconds kept, idempotent via `toggl_id`.
+- **Invoices** now have one line per section plus a dated **timesheet** (the CSA requires both monthly); the printable invoice includes the timesheet page.
+- `sections.py` split out (avoids a crm↔invoices import cycle). `_intake/` drop folder is ignored by the graph. 64 tests.
+
 ## 2026-09-24: v0.2.1, Gmail sign-in from the GUI
 - Gmail sign-in form (Setup and Inbox): verifies against Gmail IMAP **before** storing; saves to Windows Credential Manager
   (`HIVE:gmail`, via stdlib ctypes → advapi32) or memory-only for the session. Test / Sign out buttons.

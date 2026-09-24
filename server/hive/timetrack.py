@@ -28,7 +28,9 @@ def _link_target(v: Any) -> str | None:
     return m.group(1).strip() if m else (v.strip() or None)
 
 
-def _minutes(e: dict[str, Any]) -> int:
+def _minutes(e: dict[str, Any]) -> float:
+    if e.get("seconds") is not None:  # exact duration from an import (e.g. Toggl), keeps totals to the second
+        return round(float(e["seconds"]) / 60, 4)
     if e.get("start") and e.get("end"):
         s = dt.datetime.strptime(str(e["start"]), "%H:%M")
         f = dt.datetime.strptime(str(e["end"]), "%H:%M")
@@ -47,7 +49,8 @@ def _render_body(date: str, entries: list[dict[str, Any]]) -> str:
     for e in entries:
         m = _minutes(e)
         total += m
-        lines.append(f"| {e.get('start','')} | {e.get('end','')} | {m/60:.2f} | {_link_target(e.get('contract')) or ''} "
+        where = " · ".join(x for x in (_link_target(e.get("contract")), e.get("section")) if x)
+        lines.append(f"| {e.get('start','')} | {e.get('end','')} | {m/60:.2f} | {where} "
                      f"| {str(e.get('description','')).replace('|','/')} | {e.get('status','confirmed')} |")
     lines += ["", f"**Total:** {total/60:.2f} h", ""]
     return "\n".join(lines)
@@ -99,6 +102,22 @@ class TimeTracker:
         self._save_day(date, entries, actor)
         return {**e, "date": date}
 
+    def add_many(self, by_day: dict[str, list[dict[str, Any]]], actor: str = "import") -> int:
+        """Batch insert (one write per day file). Entries must already carry a duration."""
+        n = 0
+        for date, new in by_day.items():
+            dt.date.fromisoformat(date)
+            entries = self._load_day(date)
+            for e in new:
+                e = {k: v for k, v in e.items() if v not in (None, "")}
+                if not (e.get("start") and e.get("end")) and not e.get("minutes") and not e.get("seconds"):
+                    raise ValueError(f"entry on {date} has no duration")
+                e["id"] = "t_" + secrets.token_hex(4)
+                entries.append(e)
+                n += 1
+            self._save_day(date, entries, actor)
+        return n
+
     def _find(self, entry_id: str) -> tuple[str, list[dict[str, Any]], int]:
         for p in (self.vault.root / "time").glob("????-??-??.md"):
             entries = self._load_day(p.stem)
@@ -110,6 +129,8 @@ class TimeTracker:
     def update(self, entry_id: str, patch: dict[str, Any], actor: str = "ui") -> dict[str, Any]:
         date, entries, i = self._find(entry_id)
         new_date = patch.pop("date", None)
+        if any(k in patch for k in ("start", "end", "minutes")):
+            entries[i].pop("seconds", None)  # a manual duration edit supersedes the imported exact duration
         for k, v in patch.items():
             if k == "id":
                 continue
@@ -138,11 +159,13 @@ class TimeTracker:
     def timer(self) -> dict[str, Any] | None:
         return self.vault.state("timer")
 
-    def start_timer(self, contract: str | None, description: str = "", now: dt.datetime | None = None) -> dict[str, Any]:
+    def start_timer(self, contract: str | None, description: str = "", now: dt.datetime | None = None,
+                    section: str | None = None, billable: bool = True) -> dict[str, Any]:
         if self.timer():
             raise ValueError("a timer is already running; stop it first")
         now = now or dt.datetime.now()
-        t = {"started": now.isoformat(timespec="seconds"), "contract": contract, "description": description}
+        t = {"started": now.isoformat(timespec="seconds"), "contract": contract, "description": description,
+             "section": section, "billable": billable}
         self.vault.set_state("timer", t)
         self.vault.audit("ui", "timer-start", contract or "")
         return t
@@ -157,14 +180,13 @@ class TimeTracker:
         if (now - started).total_seconds() < 60:
             self.vault.audit("ui", "timer-discard", t.get("contract") or "", reason="< 1 minute")
             return None
+        common = {"contract": t.get("contract"), "section": t.get("section"), "description": t.get("description"),
+                  "billable": t.get("billable", True), "source": "timer"}
         if started.date() != now.date():
             # split across midnight is rare for consulting work: log as minutes on the start day
             mins = int((now - started).total_seconds() // 60)
-            return self.add(started.date().isoformat(), {"contract": t.get("contract"), "minutes": mins,
-                            "description": t.get("description"), "source": "timer"})
-        return self.add(started.date().isoformat(), {
-            "contract": t.get("contract"), "start": started.strftime("%H:%M"), "end": now.strftime("%H:%M"),
-            "description": t.get("description"), "source": "timer"})
+            return self.add(started.date().isoformat(), {**common, "minutes": mins})
+        return self.add(started.date().isoformat(), {**common, "start": started.strftime("%H:%M"), "end": now.strftime("%H:%M")})
 
     # ---------- analysis ----------
     def summary(self, graph: Graph, today: dt.date | None = None) -> dict[str, Any]:
@@ -174,6 +196,7 @@ class TimeTracker:
         entries = self.all_entries()
         by_contract: dict[str, dict[str, float]] = defaultdict(lambda: {"week": 0.0, "month": 0.0, "total": 0.0, "unbilled": 0.0})
         week_grid: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+        by_section: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
         for e in entries:
             if e.get("status") == "suggested":
                 continue
@@ -182,6 +205,7 @@ class TimeTracker:
             path = graph.resolve(e["contract_name"]) if e.get("contract_name") else None
             key = path or "(no contract)"
             by_contract[key]["total"] += h
+            by_section[key][e.get("section") or "(unsectioned)"] += h
             if d >= week_start:
                 by_contract[key]["week"] += h
                 week_grid[key][e["date"]] += h
@@ -190,6 +214,7 @@ class TimeTracker:
             if e.get("billable", True) and not e.get("invoice"):
                 by_contract[key]["unbilled"] += h
         return {"by_contract": {k: {kk: round(vv, 2) for kk, vv in v.items()} for k, v in by_contract.items()},
+                "by_section": {k: {kk: round(vv, 2) for kk, vv in v.items()} for k, v in by_section.items()},
                 "week_start": week_start.isoformat(),
                 "week_grid": {k: dict(v) for k, v in week_grid.items()},
                 "week_total": round(sum(v["week"] for v in by_contract.values()), 2),

@@ -17,7 +17,8 @@ from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import crm, invoices, pipeline
+from . import crm, invoices, pipeline, toggl
+from .sections import contract_sections
 from .agent import Agent, claude_available
 from . import creds
 from .config import SECRETS_FILE, claude_account, gmail_login, load_settings, read_secrets
@@ -420,9 +421,53 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
     @app.post("/api/timer/start")
     def timer_start(payload: dict = Body(...)):
         try:
-            return hive.tracker.start_timer(payload.get("contract"), payload.get("description", ""))
+            return hive.tracker.start_timer(payload.get("contract"), payload.get("description", ""),
+                                            section=payload.get("section") or None, billable=payload.get("billable", True))
         except ValueError as e:
             err(e, 409)
+
+    @app.post("/api/time/import/preview")
+    def toggl_preview(payload: dict = Body(...)):
+        try:
+            p = toggl.plan(payload.get("csv", ""), hive.graph(), hive.tracker, payload.get("project_map"))
+        except ValueError as e:
+            err(e)
+        p["projects"] = sorted({i["contract"] or "" for i in p["items"]} | set(p["unmapped_projects"]))
+        p["sample"] = p.pop("items")[:8]
+        return p
+
+    @app.post("/api/time/import")
+    def toggl_import(payload: dict = Body(...)):
+        try:
+            out = toggl.run(payload.get("csv", ""), hive.graph(), hive.tracker, payload.get("project_map"),
+                            remember=payload.get("remember", True))
+        except ValueError as e:
+            err(e)
+        hive.invalidate()
+        return out
+
+    @app.post("/api/contracts/section")
+    def contract_section(payload: dict = Body(...)):
+        """Add (or with remove=true, delete) a named section on a contract; sections are time-entry tags."""
+        g = hive.graph()
+        n = g.notes.get(payload.get("path", ""))
+        name = (payload.get("name") or "").strip()
+        if not n or n.type != "contract" or not name:
+            raise HTTPException(400, "need a contract path and a section name")
+        meta = dict(n.meta)
+        secs = [s for s in contract_sections(meta) if s["name"].lower() != name.lower()]
+        if not payload.get("remove"):
+            s = {"name": name}
+            if payload.get("budget_hours"):
+                s["budget_hours"] = float(payload["budget_hours"])
+            match = [m.strip() for m in (payload.get("match") or []) if m.strip()]
+            if match:
+                s["match"] = match
+            secs.append(s)
+        meta["sections"] = [{k: v for k, v in s.items() if v not in (None, [], "")} for s in secs]
+        hive.vault.write(n.path, meta, n.body, actor="ui", action="contract-section")
+        hive.invalidate()
+        return {"sections": meta["sections"]}
 
     @app.post("/api/timer/stop")
     def timer_stop():
