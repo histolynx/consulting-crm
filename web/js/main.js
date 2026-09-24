@@ -115,7 +115,7 @@ function App() {
 
   return html`<div class="shell">
     <aside class="side">
-      <div class="brand"><img class="logoimg" src="/icons/hive.svg" alt="" /><div><b>HIVE</b><small>CONSULTING MIND</small></div></div>
+      <div class="brand"><img class="logoimg" src="/icons/hive.svg" alt="" /><div title="Hub for Independent Venture Ecosystem"><b>HIVE</b><small>Hub for Independent<br />Venture Ecosystem</small></div></div>
       ${VIEWS.map((v) => html`<div class=${'nav' + (v.id === view.id ? ' on' : '')} onClick=${() => go(v.id)} title=${`Alt+${v.key}`}>
         <span class="ico">${v.icon}</span><span class="lbl">${v.label}</span></div>`)}
       <div class="spacer"></div>

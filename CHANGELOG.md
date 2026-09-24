@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-24: v0.3.1, section billing rules + name
+- Sections support `bill_as` (roll hours into another section's invoice line; the timesheet keeps the original section) and `overflow_as` (hours past budget, counted across invoices, go on a separate line).
+- Time page shows billed hours, what rolls in, and over-budget status. HIVE = **Hub for Independent Venture Ecosystem** (sidebar, app manifest, README). 66 tests.
+
 ## 2026-09-24: v0.3.0, contract sections, Toggl-style tracker, Toggl import
 - **Contract sections** (`sections:` with `budget_hours` and `match` tags) act as time-entry tags; add or remove them from the tracker ("+ section").
   Hours roll up per section against the SOW budget (Time page burn bars; `/api/contracts` → `sections`).
@@ -52,3 +56,4 @@ built-in time tracker (Toggl dropped); draft invoices; dark amber "hive" theme; 
 **Fixed during build:** inline fields with spaces; invoice client alias resolution; future meetings counted as "last contact";
 schema-example links in CLAUDE.md creating ghost nodes; graph clusters drifting apart (custom gravity force); link suggestions
 limited to durable entities.
+

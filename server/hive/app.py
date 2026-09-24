@@ -463,6 +463,9 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
             match = [m.strip() for m in (payload.get("match") or []) if m.strip()]
             if match:
                 s["match"] = match
+            for k in ("bill_as", "overflow_as"):
+                if (payload.get(k) or "").strip():
+                    s[k] = payload[k].strip()
             secs.append(s)
         meta["sections"] = [{k: v for k, v in s.items() if v not in (None, [], "")} for s in secs]
         hive.vault.write(n.path, meta, n.body, actor="ui", action="contract-section")

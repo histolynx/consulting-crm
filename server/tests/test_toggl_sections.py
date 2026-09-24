@@ -90,6 +90,32 @@ def test_sections_rollup_and_invoice_groups_by_section(sym):
     assert "## Timesheet" in body
 
 
+def test_bill_as_rollup_and_overflow_split_across_invoices(vault):
+    vault.write("contracts/Acme SOW.md", {
+        "type": "contract", "status": "active", "rate": 100, "rate_unit": "hour",
+        "sections": [{"name": "1 Build", "budget_hours": 10},
+                     {"name": "3 Export", "budget_hours": 4, "overflow_as": "3 Export: additional hours"},
+                     {"name": "PM", "bill_as": "1 Build"}]}, "")
+    tt = TimeTracker(vault)
+    tt.add("2026-09-02", {"contract": "Acme SOW", "section": "1 Build", "minutes": 120})
+    tt.add("2026-09-03", {"contract": "Acme SOW", "section": "PM", "minutes": 60, "description": "standup"})
+    tt.add("2026-09-04", {"contract": "Acme SOW", "section": "3 Export", "minutes": 180})
+    g = Graph.build(vault.load_all())
+    c = [x for x in crm.contracts(g, tt, today=dt.date(2026, 9, 24)) if x["name"] == "Acme SOW"][0]
+    build = [s for s in c["sections"] if s["name"] == "1 Build"][0]
+    assert build["hours"] == 2.0 and build["billed_hours"] == 3.0 and build["includes"] == ["PM"] and build["burn"] == 0.3
+
+    inv1 = invoices.generate(vault, g, tt, "contracts/Acme SOW.md", "2026-09-01", "2026-09-15")
+    assert [(l["description"], l["qty"]) for l in inv1["lines"]] == [("1 Build", 3.0), ("3 Export", 3.0)]
+    assert {t["section"] for t in inv1["timesheet"]} == {"1 Build", "PM", "3 Export"}  # detail preserved
+
+    # 3h of the 4h Export budget already invoiced -> next 2.5h split 1 inside / 1.5 overflow
+    tt.add("2026-09-20", {"contract": "Acme SOW", "section": "3 Export", "minutes": 150})
+    inv2 = invoices.generate(vault, Graph.build(vault.load_all()), tt, "contracts/Acme SOW.md", "2026-09-16", "2026-09-30")
+    assert [(l["description"], l["qty"]) for l in inv2["lines"]] == [("3 Export", 1.0), ("3 Export: additional hours", 1.5)]
+    assert inv2["total"] == 250.0
+
+
 def test_timer_carries_section(vault):
     tt = TimeTracker(vault)
     t0 = dt.datetime(2026, 9, 24, 9, 0)

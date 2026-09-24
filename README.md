@@ -1,4 +1,6 @@
-# ⬢ HIVE: a knowledge-graph CRM for a consulting practice
+# ⬢ HIVE: Hub for Independent Venture Ecosystem
+
+A knowledge-graph CRM for independent consultants.
 
 HIVE is a local-first "hive mind" for running a consulting business: **CRM, contracts pipeline, time tracking,
 invoicing and a knowledge graph**, all stored as plain **Obsidian-compatible markdown**. **Claude Code** runs as its

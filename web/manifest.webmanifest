@@ -1,7 +1,7 @@
 {
-  "name": "HIVE: Consulting Mind",
+  "name": "HIVE: Hub for Independent Venture Ecosystem",
   "short_name": "HIVE",
-  "description": "Knowledge-graph CRM for a consulting practice",
+  "description": "Hub for Independent Venture Ecosystem: a knowledge-graph CRM for independent consultants",
   "id": "/",
   "start_url": "/#dashboard",
   "scope": "/",

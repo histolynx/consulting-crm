@@ -202,8 +202,11 @@ export function TimeView({ tick }) {
     <div class="col" style="gap:14px">${budgeted.map((c) => html`<div>
       <div class="row" style="margin-bottom:6px"><b>${c.name}</b><span class="dim">${hours(c.hours_total)}${c.budget_hours ? ` of ${c.budget_hours}h` : ''}</span></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">${c.sections.map((s) => html`<div>
-        <div class="row" style="justify-content:space-between;font-size:12px"><${SectionChip} name=${s.name} small /><span class=${s.burn >= 1 ? '' : 'dim'} style=${s.burn >= 1 ? { color: 'var(--red)' } : null}>${hours(s.hours)}${s.budget_hours ? ` / ${s.budget_hours}h` : ''}</span></div>
-        ${s.budget_hours ? html`<div class=${'bar' + (s.burn >= 0.8 ? ' hot' : '')} style="margin-top:4px"><i style=${{ width: `${Math.min(100, (s.burn || 0) * 100)}%` }}></i></div>` : html`<div class="dim" style="font-size:11px;margin-top:4px">no budget line</div>`}
+        <div class="row" style="justify-content:space-between;font-size:12px"><${SectionChip} name=${s.name} small /><span class=${s.burn >= 1 ? '' : 'dim'} style=${s.burn >= 1 ? { color: 'var(--red)' } : null}>${hours(s.billed_hours ?? s.hours)}${s.budget_hours ? ` / ${s.budget_hours}h` : ''}</span></div>
+        ${s.budget_hours ? html`<div class=${'bar' + (s.burn >= 0.8 ? ' hot' : '')} style="margin-top:4px"><i style=${{ width: `${Math.min(100, (s.burn || 0) * 100)}%` }}></i></div>`
+          : s.bill_as ? html`<div class="dim" style="font-size:11px;margin-top:4px">→ bills as <b>${s.bill_as}</b></div>` : html`<div class="dim" style="font-size:11px;margin-top:4px">no budget line</div>`}
+        ${s.includes?.length > 0 && html`<div class="dim" style="font-size:11px;margin-top:2px">incl. ${s.includes.join(' + ')} (${hours(s.billed_hours - s.hours)})</div>`}
+        ${s.over_hours > 0 && html`<div style="font-size:11px;margin-top:2px;color:${s.overflow_as ? 'var(--amber2)' : 'var(--red)'}">+${hours(s.over_hours)} over${s.overflow_as ? ' → billed as additional hours' : ''}</div>`}
       </div>`)}${c.unsectioned_hours > 0 && html`<div><div class="row" style="justify-content:space-between;font-size:12px"><span class="chip">untagged</span><span class="dim">${hours(c.unsectioned_hours)}</span></div></div>`}</div>
     </div>`)}</div></div>`}
 

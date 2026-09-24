@@ -69,6 +69,20 @@ def clients(graph: Graph) -> list[dict[str, Any]]:
     return sorted(out, key=lambda c: c["name"].lower())
 
 
+def _section_rollup(secs: list[dict[str, Any]], hours_by: dict[str, float]) -> list[dict[str, Any]]:
+    """Per-section hours plus `billed_hours`: own hours + sections that bill_as this one. Burn uses billed hours."""
+    out = []
+    for s in secs:
+        own = hours_by.get(s["name"], 0.0)
+        feeders = [x["name"] for x in secs if x.get("bill_as") == s["name"]]
+        billed = own + sum(hours_by.get(n, 0.0) for n in feeders)
+        budget = float(s["budget_hours"]) if s.get("budget_hours") else None
+        out.append({**s, "hours": round(own, 2), "billed_hours": round(billed, 2), "includes": feeders,
+                    "burn": round(billed / budget, 3) if budget else None,
+                    "over_hours": round(max(0.0, billed - budget), 2) if budget else 0.0})
+    return out
+
+
 def contracts(graph: Graph, tracker: TimeTracker, today: dt.date | None = None) -> list[dict[str, Any]]:
     today = today or dt.date.today()
     tsums = tracker.summary(graph, today)
@@ -97,9 +111,7 @@ def contracts(graph: Graph, tracker: TimeTracker, today: dt.date | None = None) 
             "burn": round(hours.get("total", 0.0) / budget, 3) if budget else None,
             "invoiced": round(invoiced, 2), "next_step": m.get("next_step"), "expected_close": m.get("expected_close"),
             "tags": n.tags, "demo": bool(m.get("demo")),
-            "sections": [{**s, "hours": round(tsec.get(p, {}).get(s["name"], 0.0), 2),
-                          "burn": round(tsec.get(p, {}).get(s["name"], 0.0) / float(s["budget_hours"]), 3) if s.get("budget_hours") else None}
-                         for s in contract_sections(m)],
+            "sections": _section_rollup(contract_sections(m), tsec.get(p, {})),
             "unsectioned_hours": round(tsec.get(p, {}).get("(unsectioned)", 0.0), 2),
             "toggl_projects": m.get("toggl_projects") or [],
         })

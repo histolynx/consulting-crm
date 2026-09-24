@@ -5,7 +5,7 @@ import datetime as dt
 import re
 from typing import Any
 
-from .sections import contract_sections
+from .sections import billing_line, contract_sections
 from .graph import Graph
 from .timetrack import TimeTracker, _link_target
 from .vault import Vault
@@ -49,28 +49,48 @@ def generate(vault: Vault, graph: Graph, tracker: TimeTracker, contract_path: st
         if rate <= 0:
             raise ValueError(f"contract {c.title} has no `rate` set")
         hpd = float(c.meta.get("hours_per_day", 8))
-        section_hours: dict[str, float] = {}
+        secs = contract_sections(c.meta)
+        by_name = {x["name"]: x for x in secs}
+        line_hours: dict[str, float] = {}
+        prior: dict[str, float] = {}  # hours already on earlier invoices, per line (for overflow budgets)
         for e in sorted(tracker.all_entries(), key=lambda x: (x["date"], str(x.get("start") or ""))):
-            if e.get("status") == "suggested" or not e.get("billable", True) or e.get("invoice"):
+            if e.get("status") == "suggested" or not e.get("billable", True):
                 continue
             if not e.get("contract_name") or graph.resolve(e["contract_name"]) != contract_path:
+                continue
+            hours = e["minutes"] / 60
+            line = billing_line(secs, e.get("section"))
+            if e.get("invoice"):
+                prior[line] = prior.get(line, 0.0) + hours
                 continue
             d = dt.date.fromisoformat(e["date"])
             if not (s <= d <= f):
                 continue
-            hours = e["minutes"] / 60
-            sec = e.get("section") or "Consulting services"
-            section_hours[sec] = section_hours.get(sec, 0.0) + hours
-            timesheet.append({"date": e["date"], "section": sec, "description": e.get("description") or "",
-                              "hours": round(hours, 2)})
+            line_hours[line] = line_hours.get(line, 0.0) + hours
+            timesheet.append({"date": e["date"], "section": e.get("section") or "Consulting services",
+                              "description": e.get("description") or "", "hours": round(hours, 2)})
             entry_ids.append(e["id"])
-        # one invoice line per contract section (SOW-style); the dated timesheet carries the detail
-        order = [x["name"] for x in contract_sections(c.meta)]
-        for sec in sorted(section_hours, key=lambda x: (order.index(x) if x in order else 99, x)):
-            hrs = section_hours[sec]
+
+        def add_line(desc: str, hrs: float) -> None:
             qty = round(hrs if unit == "hour" else hrs / hpd, 2)
-            lines.append({"date": f"{start} → {end}", "description": sec, "qty": qty, "unit": unit,
-                          "rate": rate, "amount": _money(qty * rate)})
+            if qty > 0:
+                lines.append({"date": f"{start} → {end}", "description": desc, "qty": qty, "unit": unit,
+                              "rate": rate, "amount": _money(qty * rate)})
+
+        # one invoice line per billing line (SOW-style); bill_as rolls sections together, overflow_as splits
+        # hours past the budget onto their own line; the dated timesheet keeps the per-section detail
+        order = [x["name"] for x in secs]
+        for line in sorted(line_hours, key=lambda x: (order.index(x) if x in order else 99, x)):
+            hrs = line_hours[line]
+            sec = by_name.get(line, {})
+            budget, overflow = sec.get("budget_hours"), sec.get("overflow_as")
+            if budget and overflow:
+                remaining = max(0.0, float(budget) - prior.get(line, 0.0))
+                inside = min(hrs, remaining)
+                add_line(line, inside)
+                add_line(overflow, hrs - inside)
+            else:
+                add_line(line, hrs)
     elif unit == "fixed":
         for m in c.meta.get("milestones") or []:
             if m.get("status") == "complete" and not m.get("invoice"):
