@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+exports/
+# Client data lives in vault/, which is its own (private) git repo. Never commit it here.
+vault/

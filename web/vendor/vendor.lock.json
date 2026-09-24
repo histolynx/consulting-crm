@@ -1,0 +1,45 @@
+{
+  "preact@10.29.8": {
+    "integrity": "sha512-ej2aVZ+vZ8WO7tvlQWRM9N63A0KzF9q4mWJfDUHgYaIofWY9hu74QdnQrjoPMmZi2/nZ5gN0bJCQF49xQqx09Q==",
+    "released": "2026-08-01T09:59:54.572Z",
+    "files": [
+      "preact.mjs",
+      "preact-hooks.mjs"
+    ]
+  },
+  "htm@3.1.1": {
+    "integrity": "sha512-983Vyg8NwUE7JkZ6NmOqpCZ+sh1bKv2iYTlUkzlWmA5JD2acKoxd4KVxbMmxX/85mtfdnDmTFoNKcg5DGAvxNQ==",
+    "released": "2022-04-26T16:23:10.427Z",
+    "files": [
+      "htm.mjs"
+    ]
+  },
+  "force-graph@1.51.4": {
+    "integrity": "sha512-TdJ2KbkoiDQ7NIRx8IPGD0mAXXpLhamS7c+b7W98b0MHG7lphnda1VOQX/98UDTsttIAdH4TcP0l0MauSnLK8w==",
+    "released": "2026-04-16T22:42:29.449Z",
+    "files": [
+      "force-graph.min.js"
+    ]
+  },
+  "3d-force-graph@1.80.0": {
+    "integrity": "sha512-tzI353gW1nXPpnC7VTa3JjMg+3cp77qOLUFO0vucPTfF+q5R6sQsNsIqVTbRIb7RSypn14nBa4yfkOe9ThxASw==",
+    "released": "2026-04-05T00:10:21.626Z",
+    "files": [
+      "3d-force-graph.min.js"
+    ]
+  },
+  "marked@18.0.11": {
+    "integrity": "sha512-HnslJfsZkRPBDJRHvVtAaWlZHEpSu7u8LgQuJCELjRKuWR+hpq4A7sLq3p8HaI9ypVoXDXxV34CsQJEe1+J5Aw==",
+    "released": "2026-08-24T16:55:21.888Z",
+    "files": [
+      "marked.mjs"
+    ]
+  },
+  "dompurify@3.4.14": {
+    "integrity": "sha512-dVoH9z+MY+C9IilgGCk3YfFqjLi3fChm2OiKJMzh6axrJ5qwxqWaZamgmHrpv22CN/KdbZJuGEGgfQoL00LTdg==",
+    "released": "2026-08-19T10:25:15.825Z",
+    "files": [
+      "purify.mjs"
+    ]
+  }
+}

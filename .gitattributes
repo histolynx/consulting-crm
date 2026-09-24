@@ -1,0 +1,5 @@
+web/vendor/** binary
+*.md text eol=lf
+*.py text eol=lf
+*.js text eol=lf
+*.css text eol=lf

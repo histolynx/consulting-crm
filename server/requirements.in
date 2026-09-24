@@ -1,0 +1,7 @@
+# Top-level dependencies (exact pins). Transitive deps + hashes live in requirements.lock.
+# Regenerate with: scripts\lock-python.ps1  (resolves only releases >= 14 days old)
+fastapi==0.141.1
+uvicorn==0.52.4
+PyYAML==6.0.3
+pytest==9.1.1
+httpx==0.28.1
