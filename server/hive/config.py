@@ -56,6 +56,29 @@ def secret(name: str) -> str:
     return val
 
 
+def gmail_login() -> tuple[str, str, str] | None:
+    """(user, app_password, source). Checked in order: secrets.env / env vars (both keys required),
+    this session's memory, Windows Credential Manager. The pair always comes from ONE source."""
+    from . import creds
+    s = read_secrets()
+    if s.get("HIVE_GMAIL_USER") and s.get("HIVE_GMAIL_APP_PASSWORD"):
+        return s["HIVE_GMAIL_USER"], s["HIVE_GMAIL_APP_PASSWORD"], "secrets-file"
+    sess = creds.session_get()
+    if sess:
+        return sess[0], sess[1], "session"
+    stored = creds.vault_read()
+    if stored and stored[0] and stored[1]:
+        return stored[0], stored[1], "credential-manager"
+    return None
+
+
+def require_gmail_login() -> tuple[str, str]:
+    login = gmail_login()
+    if not login:
+        raise ConfigError("Gmail isn't connected. Open HIVE → Setup (or Inbox) and sign in with your app password.")
+    return login[0], login[1]
+
+
 def claude_env() -> dict[str, str]:
     """Environment for the claude subprocess. If HIVE_CLAUDE_CONFIG_DIR is set, HIVE's agent uses that
     config dir, i.e. its OWN Claude login (e.g. the account tied to the hive mailbox), independent of

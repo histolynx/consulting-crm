@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-24: v0.2.1, Gmail sign-in from the GUI
+- Gmail sign-in form (Setup and Inbox): verifies against Gmail IMAP **before** storing; saves to Windows Credential Manager
+  (`HIVE:gmail`, via stdlib ctypes → advapi32) or memory-only for the session. Test / Sign out buttons.
+- `config.gmail_login()` resolves one source (secrets file pair → session → Credential Manager); clear error pointing to Setup when missing.
+- `/api/gmail` GET/POST/DELETE and `/api/gmail/test`; password never returned, logged or passed to the agent.
+- Local `secrets.env` no longer holds a password line. 57 tests (new `test_creds.py`, includes a real Credential Manager round trip).
+
 ## 2026-09-24: v0.2.0, desktop app and separate Claude account
 - **Logo:** "Hex Constellation" (amber hex + 4-node graph): `web/icons/hive.svg`, PNGs 16–512, multi-size `hive.ico` (`scripts/make_ico.py`).
 - **Installable PWA:** manifest (standalone window, jump-list shortcuts), network-first service worker with an "asleep" page when the server is down.

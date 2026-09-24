@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { html, api, openNote, toast, refreshAll, go } from '../lib.js';
+import { GmailConnect } from '../components.js';
 
 const STEP_ICON = { fetch: '✉', ingest: '✦', push_drafts: '✎', time_gaps: '◷', snapshot: '▣', git: '⎇' };
 
@@ -34,7 +35,8 @@ export function Inbox({ tick, health }) {
 
   return html`
   ${health && !health.mail_configured && html`<div class="card" style="margin-bottom:16px;border-color:var(--amber)">
-    <h3>✉ Connect Gmail</h3><div>Mail isn't configured yet. See <a style="cursor:pointer" onClick=${() => go('setup')}>Setup</a>: it takes 2 minutes (app password, no Google Cloud project needed).</div></div>`}
+    <h3>✉ Sign in to Gmail</h3><${GmailConnect} />
+    <div class="dim" style="font-size:12px;margin-top:6px">Need an app password? Steps are on <a style="cursor:pointer" onClick=${() => go('setup')}>Setup</a>.</div></div>`}
   <div class="grid3" style="margin-bottom:16px">
     <div class="kpi" style="--kc:var(--violet)"><div class="l">New in inbox</div><div class="v">${st?.inbox_new ?? '…'}</div><div class="s">${st?.inbox_processed ?? 0} processed</div></div>
     <div class="kpi" style="--kc:var(--pink)"><div class="l">Drafts ready to push</div><div class="v">${st?.drafts_ready ?? '…'}</div><div class="s">land in Gmail → Drafts</div></div>

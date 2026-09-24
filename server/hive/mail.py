@@ -21,8 +21,28 @@ from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 
-from .config import secret
+from .config import require_gmail_login
 from .vault import Vault, slugify
+
+
+class LoginFailed(RuntimeError):
+    pass
+
+
+def imap_login(user: str, password: str, timeout: float = 20) -> imaplib.IMAP4_SSL:
+    """Open an authenticated IMAP session. Raises LoginFailed with a human-readable reason."""
+    try:
+        imap = imaplib.IMAP4_SSL(IMAP_HOST, timeout=timeout)
+    except OSError as e:
+        raise LoginFailed(f"Can't reach Gmail ({e}). Check your internet connection.") from e
+    try:
+        imap.login(user.strip(), password.replace(" ", "").strip())
+    except imaplib.IMAP4.error as e:
+        msg = str(e)
+        hint = ("Gmail rejected the login. Use a 16-character App password (not your normal password), "
+                "make sure 2-Step Verification is on and IMAP is enabled.")
+        raise LoginFailed(f"{hint} [{msg[:120]}]") from e
+    return imap
 
 IMAP_HOST = "imap.gmail.com"
 MAX_ATTACHMENT = 20 * 1024 * 1024
@@ -156,11 +176,8 @@ class Mailbox:
         self.vault = vault
 
     def _connect(self) -> imaplib.IMAP4_SSL:
-        user = secret("HIVE_GMAIL_USER")
-        pw = secret("HIVE_GMAIL_APP_PASSWORD").replace(" ", "")
-        imap = imaplib.IMAP4_SSL(IMAP_HOST)
-        imap.login(user, pw)
-        return imap
+        user, pw = require_gmail_login()
+        return imap_login(user, pw)
 
     def fetch_new(self, limit: int = 200) -> list[str]:
         state = self.vault.state("mail", {})
@@ -224,7 +241,7 @@ class Mailbox:
         pending = self.pending_drafts()
         if not pending:
             return []
-        user = secret("HIVE_GMAIL_USER")
+        user, _ = require_gmail_login()
         imap = self._connect()
         pushed = []
         try:

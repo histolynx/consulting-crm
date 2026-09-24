@@ -19,9 +19,10 @@ from fastapi.staticfiles import StaticFiles
 
 from . import crm, invoices, pipeline
 from .agent import Agent, claude_available
-from .config import SECRETS_FILE, claude_account, load_settings, read_secrets
+from . import creds
+from .config import SECRETS_FILE, claude_account, gmail_login, load_settings, read_secrets
 from .graph import Graph
-from .mail import Mailbox
+from .mail import LoginFailed, Mailbox, imap_login
 from .timetrack import TimeTracker
 from .vault import Vault
 
@@ -108,9 +109,58 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
     @app.get("/api/health")
     def health():
         s = read_secrets()
+        login = gmail_login()
         return {"vault": str(hive.vault.root), "claude": claude_available(),
-                "mail_configured": bool(s.get("HIVE_GMAIL_USER") and s.get("HIVE_GMAIL_APP_PASSWORD")),
-                "secrets_file": str(SECRETS_FILE), "gmail_user": s.get("HIVE_GMAIL_USER")}
+                "mail_configured": login is not None, "mail_source": login[2] if login else None,
+                "secrets_file": str(SECRETS_FILE), "gmail_user": login[0] if login else s.get("HIVE_GMAIL_USER")}
+
+    # ---------------- gmail login (entered in the GUI, never stored in plaintext) ----------------
+    def gmail_status() -> dict:
+        login = gmail_login()
+        return {"connected": login is not None, "user": login[0] if login else None,
+                "source": login[2] if login else None, "suggested_user": read_secrets().get("HIVE_GMAIL_USER")}
+
+    @app.get("/api/gmail")
+    def gmail_get():
+        return gmail_status()
+
+    @app.post("/api/gmail")
+    def gmail_connect(payload: dict = Body(...)):
+        user = (payload.get("user") or "").strip()
+        pw = (payload.get("password") or "").replace(" ", "").strip()
+        if not user or not pw:
+            raise HTTPException(400, "email and app password are required")
+        try:
+            imap_login(user, pw).logout()  # verify BEFORE storing anything
+        except LoginFailed as e:
+            hive.vault.audit("ui", "gmail-connect-failed", user)
+            raise HTTPException(400, str(e)) from e
+        creds.session_clear()
+        if payload.get("remember", True):
+            creds.vault_write(user, pw)
+        else:
+            creds.vault_delete()
+            creds.session_set(user, pw)
+        hive.vault.audit("ui", "gmail-connect", user, stored="credential-manager" if payload.get("remember", True) else "session")
+        return gmail_status()
+
+    @app.post("/api/gmail/test")
+    def gmail_test():
+        login = gmail_login()
+        if not login:
+            raise HTTPException(400, "Gmail isn't connected")
+        try:
+            imap_login(login[0], login[1]).logout()
+        except LoginFailed as e:
+            raise HTTPException(400, str(e)) from e
+        return {"ok": True, **gmail_status()}
+
+    @app.delete("/api/gmail")
+    def gmail_forget():
+        creds.session_clear()
+        removed = creds.vault_delete()
+        hive.vault.audit("ui", "gmail-forget", "", removed=removed)
+        return gmail_status()
 
     @app.get("/api/claude/account")
     def claude_acct():

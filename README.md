@@ -62,11 +62,10 @@ e.g. the account tied to the hive mailbox. Your interactive Claude Code keeps it
 ## Gmail setup (about 2 min, no Google Cloud project)
 1. On `your-hive-inbox@gmail.com`: enable 2-Step Verification → create an **App password** (myaccount.google.com/apppasswords).
 2. Make sure IMAP is enabled in Gmail settings.
-3. Create `%USERPROFILE%\.hive\secrets.env`:
-   ```
-   HIVE_GMAIL_USER=your-hive-inbox@gmail.com
-   HIVE_GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
-   ```
+3. In HIVE → **Setup** (or the Inbox banner), sign in with the address and app password. HIVE checks the login
+   with Gmail first, then stores it **encrypted in Windows Credential Manager** (entry `HIVE:gmail`, bound to your Windows login).
+   Untick "Remember" to keep it in memory only until the server restarts. The password is never written to a file and never sent to Claude.
+   (For headless setups, `HIVE_GMAIL_USER` + `HIVE_GMAIL_APP_PASSWORD` in `%USERPROFILE%\.hive\secrets.env` still work.)
 4. Forward client mail from your personal account. HIVE unwraps Gmail/Outlook forwards so the **original sender** is recorded.
 
 ## Automation

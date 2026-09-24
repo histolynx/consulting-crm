@@ -87,7 +87,7 @@ function App() {
   useEffect(() => {
     const onHash = () => setRoute(parseHash());
     addEventListener('hashchange', onHash);
-    const offR = bus.on('refresh', () => setTick((t) => t + 1));
+    const offR = bus.on('refresh', () => { setTick((t) => t + 1); api.get('/api/health').then(setHealth); });
     const offN = bus.on('new-note', (type) => setCreating(type));
     api.get('/api/health').then((h) => {
       setHealth(h);

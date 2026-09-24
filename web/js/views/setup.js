@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { html, api, openNote } from '../lib.js';
+import { GmailConnect } from '../components.js';
 
 function ClaudeAccount() {
   const [a, setA] = useState(null);
@@ -26,15 +27,15 @@ export function Setup({ health }) {
 
     <${ClaudeAccount} />
 
-    <div class="card"><h3>✉ Connect Gmail (≈2 minutes)</h3><ol style="margin:0;padding-left:20px;line-height:1.9">
-      <li>Sign in to <b>${health.gmail_user || 'your-hive-inbox@gmail.com'}</b> → Google Account → Security → turn on <b>2-Step Verification</b>.</li>
-      <li>Open <span class="mono">myaccount.google.com/apppasswords</span>, create one named <b>HIVE</b>, copy the 16 characters.</li>
-      <li>Gmail → Settings → <b>Forwarding and POP/IMAP</b> → make sure IMAP is enabled.</li>
-      <li>Create <span class="mono">${health.secrets_file}</span> containing:
-        <pre class="md" style="background:var(--bg2);padding:10px;border-radius:8px">HIVE_GMAIL_USER=${health.gmail_user || 'your-hive-inbox@gmail.com'}
-HIVE_GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx</pre></li>
-      <li>In your personal Gmail, forward client threads to the hive address (or set a filter to auto-forward from client domains).</li></ol>
-      <div class="dim" style="font-size:12px">The mailbox is opened read-only: HIVE never deletes or marks mail. Claude never sees the password: Python fetches mail, Claude only reads the saved markdown.</div></div>
+    <div class="card"><h3>✉ Gmail</h3>
+      <${GmailConnect} />
+      <details style="margin-top:14px"><summary class="muted" style="cursor:pointer">How to get an app password (≈2 minutes)</summary>
+      <ol style="margin:8px 0 0;padding-left:20px;line-height:1.9">
+        <li>Sign in to <b>${health.gmail_user || 'your hive inbox'}</b> → Google Account → Security → turn on <b>2-Step Verification</b>.</li>
+        <li>Open <span class="mono">myaccount.google.com/apppasswords</span>, create one named <b>HIVE</b>, copy the 16 characters, paste above.</li>
+        <li>Gmail → Settings → <b>Forwarding and POP/IMAP</b> → make sure IMAP is enabled.</li>
+        <li>In your personal Gmail, forward client threads to the hive address (or add a filter to auto-forward from client domains).</li></ol></details>
+      <div class="dim" style="font-size:12px;margin-top:8px">The mailbox is opened read-only: HIVE never deletes or marks mail. Claude never sees the password: Python fetches mail, Claude only reads the saved markdown.</div></div>
 
     <div class="card"><h3>⬡ Obsidian</h3><div>Open <span class="mono">${health.vault}</span> as a vault in Obsidian (“Open folder as vault”). Everything HIVE writes is plain markdown with <span class="mono">[[wikilinks]]</span> and YAML, so Obsidian’s graph view, backlinks and Dataview work out of the box. The “⬡ Obsidian” button on any note jumps straight to it.</div></div>
 

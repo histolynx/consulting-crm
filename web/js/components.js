@@ -177,6 +177,60 @@ export function NewNoteModal({ type, onClose, preset = {} }) {
   <//>`;
 }
 
+// ---------- Gmail sign-in (password goes to Windows Credential Manager, never to a file) ----------
+const SOURCE_LABEL = { 'credential-manager': 'saved in Windows Credential Manager', session: 'this session only (forgotten on restart)', 'secrets-file': 'from secrets.env' };
+
+export function GmailConnect({ onChange, compact }) {
+  const [st, setSt] = useState(null);
+  const [user, setUser] = useState('');
+  const [pw, setPw] = useState('');
+  const [show, setShow] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const load = () => api.get('/api/gmail').then((s) => { setSt(s); setUser((u) => u || s.user || s.suggested_user || ''); });
+  useEffect(() => { load(); }, []);
+
+  const connect = async () => {
+    setBusy(true); setErr('');
+    try {
+      const s = await api.post('/api/gmail', { user, password: pw, remember });
+      setSt(s); setPw(''); toast(`Gmail connected: ${s.user}`); onChange?.(s); refreshAll();
+    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const test = async () => {
+    setBusy(true); setErr('');
+    try { await api.post('/api/gmail/test'); toast('Gmail login works ✓'); } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const forget = async () => { const s = await api.del('/api/gmail'); setSt(s); toast('Gmail login forgotten'); onChange?.(s); refreshAll(); };
+
+  if (!st) return html`<span class="thinking"><i></i><i></i><i></i></span>`;
+  if (st.connected) return html`<div class="col" style="gap:8px">
+    <div class="row"><span class="chip green">connected</span><b>${st.user}</b><span class="dim" style="font-size:12px">${SOURCE_LABEL[st.source] || st.source}</span>
+      <span class="sp"></span><button class="btn sm" disabled=${busy} onClick=${test}>${busy ? 'Testing…' : 'Test'}</button>
+      ${st.source !== 'secrets-file' && html`<button class="btn ghost sm danger" onClick=${forget}>Sign out</button>`}</div>
+    ${st.source === 'session' && html`<div class="dim" style="font-size:12px">Hourly background sync can't use a session-only login; tick “Remember” to enable it.</div>`}
+    ${err && html`<div style="color:var(--red);font-size:13px">${err}</div>`}</div>`;
+
+  return html`<form class="col" style="gap:10px" onSubmit=${(e) => { e.preventDefault(); connect(); }} autocomplete="off">
+    ${!compact && html`<div class="muted" style="font-size:13px">Sign in to the mailbox HIVE should read. Use a Gmail <b>App password</b> (Google Account → Security → 2-Step Verification → App passwords), not your normal password.</div>`}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+      <input class="input" type="email" placeholder="hive inbox, e.g. name@gmail.com" value=${user} onInput=${(e) => setUser(e.target.value)} autocomplete="username" />
+      <div style="display:flex;gap:4px;align-items:center">
+        <input class="input mono" type=${show ? 'text' : 'password'} placeholder="16-character app password" value=${pw} onInput=${(e) => setPw(e.target.value)} autocomplete="new-password" spellcheck="false" />
+        <button type="button" class="btn ghost sm" onClick=${() => setShow(!show)} title="Show/hide">${show ? '🙈' : '👁'}</button></div>
+    </div>
+    <div class="row">
+      <label class="row muted" style="gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" checked=${remember} onChange=${() => setRemember(!remember)} />
+        Remember on this PC (encrypted in Windows Credential Manager)</label>
+      <span class="sp"></span>
+      <button class="btn primary" type="submit" disabled=${busy || !user || !pw}>${busy ? 'Checking with Gmail…' : 'Sign in'}</button>
+    </div>
+    ${err && html`<div style="color:var(--red);font-size:13px">${err}</div>`}
+    <div class="dim" style="font-size:11px">HIVE verifies the login with Gmail before saving. The password is never written to disk in plain text, never shown again, and never sent to Claude.</div>
+  </form>`;
+}
+
 // ---------- command palette ----------
 export function Palette({ onClose, commands }) {
   const [q, setQ] = useState('');
