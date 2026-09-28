@@ -69,6 +69,18 @@ def test_gap_detection_apply_and_reject(crm_vault):
         mod.TimeTracker.detect_gaps = orig
 
 
+def test_no_gap_suggestions_for_unsigned_deals(crm_vault):
+    crm_vault.write("emails/2026-09-23 Graph chat.md", {"type": "email", "date": "2026-09-23", "contract": "[[Globex Graph]]"}, "")
+    gaps = TimeTracker(crm_vault).detect_gaps(Graph.build(crm_vault.load_all()), today=dt.date(2026, 9, 24))
+    assert all(g["contract"] != "contracts/Globex Graph.md" for g in gaps)  # negotiating, not active
+
+
+def test_no_gap_suggestions_outside_contract_term(crm_vault):
+    n = crm_vault.read("contracts/Acme Platform.md")
+    crm_vault.write(n.path, {**n.meta, "start": "2026-11-01"}, n.body)  # email on 09-22 predates the term
+    assert TimeTracker(crm_vault).detect_gaps(Graph.build(crm_vault.load_all()), today=dt.date(2026, 9, 24)) == []
+
+
 def test_summary_excludes_suggested(crm_vault):
     tt = TimeTracker(crm_vault)
     tt.add("2026-09-22", {"contract": "Acme Platform", "minutes": 120})

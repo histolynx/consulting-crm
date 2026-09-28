@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-09-28: v0.3.2, smarter gap detection
+- Gap suggestions only for **active** contracts, and only for dates **inside the contract term** (start/end). Pre-sales emails on unsigned deals or before a start date no longer produce billable-time suggestions. 68 tests.
+
 ## 2026-09-24: v0.3.1, section billing rules + name
 - Sections support `bill_as` (roll hours into another section's invoice line; the timesheet keeps the original section) and `overflow_as` (hours past budget, counted across invoices, go on a separate line).
 - Time page shows billed hours, what rolls in, and over-budget status. HIVE = **Hub for Independent Venture Ecosystem** (sidebar, app manifest, README). 66 tests.

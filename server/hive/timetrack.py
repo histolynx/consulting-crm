@@ -226,8 +226,9 @@ class TimeTracker:
         window_start = today - dt.timedelta(days=days)
         dismissed = set(self.vault.state("dismissed_gaps", []))
 
+        # only signed, running work: pre-sales time on unsigned deals isn't billable, so suggesting it is noise
         contracts = {p: n for p, n in graph.notes.items()
-                     if n.type == "contract" and str(n.meta.get("status", "active")) in ("active", "negotiating", "proposal")}
+                     if n.type == "contract" and str(n.meta.get("status", "active")) == "active"}
         client_of: dict[str, str | None] = {}
         related: dict[str, set[str]] = {}
         for cp, cn in contracts.items():
@@ -257,8 +258,14 @@ class TimeTracker:
             if not (window_start <= d <= today):
                 continue
             neigh = graph.adj.get(ap, set())
-            direct = [cp for cp in contracts if cp in neigh]
-            matches = direct or [cp for cp in contracts if neigh & related[cp]]
+
+            def in_term(cp: str) -> bool:  # no suggestions outside a contract's start/end (e.g. pre-start signing emails)
+                m = contracts[cp].meta
+                s_, e_ = str(m.get("start") or "")[:10], str(m.get("end") or "")[:10]
+                return (not s_ or d.isoformat() >= s_) and (not e_ or d.isoformat() <= e_)
+
+            direct = [cp for cp in contracts if cp in neigh and in_term(cp)]
+            matches = direct or [cp for cp in contracts if neigh & related[cp] and in_term(cp)]
             if not matches:
                 continue
             cp = sorted(matches)[0]
