@@ -68,6 +68,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .searchbtn { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; color: var(--muted); cursor: pointer; min-width: 240px; }
 .searchbtn:hover { border-color: var(--line2); }
 .content { flex: 1; overflow: auto; padding: 22px; min-height: 0; }
+
+/* Installed-app window dragging: the top bar and sidebar logo act as the window's title bar.
+   Interactive controls opt out so they stay clickable. */
+.top, .brand { -webkit-app-region: drag; app-region: drag; user-select: none; }
+.top button, .top input, .top select, .top a, .top .searchbtn, .top .timer, .brand a, .brand button { -webkit-app-region: no-drag; app-region: no-drag; }
+.top::after { content: ""; position: absolute; left: 50%; top: 5px; width: 36px; height: 4px; margin-left: -18px; border-radius: 4px; background: var(--line2); opacity: 0; transition: opacity .2s; }
+/* Title bar hidden (window-controls-overlay): keep content clear of Windows' min/max/close buttons and show a grip */
+@media (display-mode: window-controls-overlay) {
+  .top { padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 16px); min-height: env(titlebar-area-height, 40px); }
+  .top::after { opacity: .8; }
+}
 .content.full { padding: 0; overflow: hidden; position: relative; }
 
 /* ---------- timer ---------- */
