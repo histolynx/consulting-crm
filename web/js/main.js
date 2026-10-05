@@ -77,6 +77,23 @@ function Timer() {
     <button class="btn primary sm round" onClick=${start}>▶ Start</button></div>`;
 }
 
+// Running-timer readout in the window title bar (click → Time page)
+function TitleTimer() {
+  const [timer, setTimer] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const load = () => api.get('/api/timer').then((r) => setTimer(r.timer)).catch(() => {});
+    load();
+    const i = setInterval(() => setNow(Date.now()), 1000);
+    const off = bus.on('timer-changed', load);
+    return () => { clearInterval(i); off(); };
+  }, []);
+  if (!timer) return null;
+  const secs = Math.max(0, Math.floor((now - new Date(timer.started).getTime()) / 1000));
+  return html`<span class="tb-timer" onClick=${() => go('time')} title=${`${timer.contract || 'No contract'}${timer.section ? ' · ' + timer.section : ''}`}>
+    <span class="dot" style="width:6px;height:6px"></span> ${fmtClock(secs)} · ${timer.section || timer.contract || 'timer'}</span>`;
+}
+
 function App() {
   const [route, setRoute] = useState(parseHash());
   const [palette, setPalette] = useState(false);
@@ -113,7 +130,11 @@ function App() {
   ];
   const isDemo = health && /demo-vault$/.test(health.vault.replace(/[\\/]+$/, ''));
 
-  return html`<div class="shell">
+  return html`<div class="titlebar" title="Drag to move · double-click to maximize">
+      <img src="/icons/hive.svg" alt="" /><b>HIVE</b><span class="tb-sep">/</span><span>${view.label}</span>
+      ${isDemo && html`<span class="chip amber" style="font-size:10px">DEMO</span>`}
+      <span class="sp"></span><${TitleTimer} /></div>
+    <div class="shell">
     <aside class="side">
       <div class="brand"><img class="logoimg" src="/icons/hive.svg" alt="" /><div title="Hub for Independent Venture Ecosystem"><b>HIVE</b><small>Hub for Independent<br />Venture Ecosystem</small></div></div>
       ${VIEWS.map((v) => html`<div class=${'nav' + (v.id === view.id ? ' on' : '')} onClick=${() => go(v.id)} title=${`Alt+${v.key}`}>
@@ -139,5 +160,11 @@ function App() {
     <${Toasts} />
   </div>`;
 }
+
+// Own title bar whenever Windows' title bar is hidden (window-controls-overlay); ?tb=1 forces it (testing/preference)
+const wco = matchMedia('(display-mode: window-controls-overlay)');
+const syncTitlebar = () => document.documentElement.classList.toggle('tb-on', wco.matches || new URLSearchParams(location.search).has('tb'));
+wco.addEventListener('change', syncTitlebar);
+syncTitlebar();
 
 render(html`<${App} />`, document.getElementById('app'));

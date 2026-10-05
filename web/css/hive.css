@@ -69,16 +69,31 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .searchbtn:hover { border-color: var(--line2); }
 .content { flex: 1; overflow: auto; padding: 22px; min-height: 0; }
 
-/* Installed-app window dragging: the top bar and sidebar logo act as the window's title bar.
-   Interactive controls opt out so they stay clickable. */
+/* ---------- window title bar ----------
+   When the installed app hides Windows' title bar (Edge "window controls overlay"), HIVE draws its own
+   permanent full-width bar: the whole strip drags the window, Windows' min/max/close get a reserved slot on
+   the right, and every fixed layer (drawer, modals, palette) starts BELOW it so nothing is ever covered.
+   With the normal Windows title bar (or in a browser tab) --tb-h is 0 and the strip is hidden. */
+:root { --tb-h: 0px; }
+.titlebar { display: none; }
+:root.tb-on { --tb-h: max(env(titlebar-area-height, 0px), 40px); }
+.tb-on .titlebar {
+  display: flex; align-items: center; gap: 10px; position: fixed; top: 0; left: 0; right: 0; height: var(--tb-h); z-index: 100;
+  padding-left: 14px; padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 12px);
+  background: #0a0c0f; border-bottom: 1px solid var(--line); -webkit-app-region: drag; app-region: drag; user-select: none;
+  font-size: 12.5px; color: var(--muted);
+}
+.titlebar img { width: 18px; height: 18px; }
+.titlebar b { color: var(--text); letter-spacing: .18em; font-size: 12px; }
+.titlebar .tb-sep { color: var(--dim); }
+.titlebar .tb-timer { -webkit-app-region: no-drag; app-region: no-drag; color: var(--amber2); font-family: var(--mono); cursor: pointer; }
+.shell { margin-top: var(--tb-h); height: calc(100vh - var(--tb-h)); }
+.drawer { top: var(--tb-h); }
+.overlay { top: var(--tb-h); }
+
+/* The page header and logo also drag the window (handy in normal mode); controls stay clickable. */
 .top, .brand { -webkit-app-region: drag; app-region: drag; user-select: none; }
 .top button, .top input, .top select, .top a, .top .searchbtn, .top .timer, .brand a, .brand button { -webkit-app-region: no-drag; app-region: no-drag; }
-.top::after { content: ""; position: absolute; left: 50%; top: 5px; width: 36px; height: 4px; margin-left: -18px; border-radius: 4px; background: var(--line2); opacity: 0; transition: opacity .2s; }
-/* Title bar hidden (window-controls-overlay): keep content clear of Windows' min/max/close buttons and show a grip */
-@media (display-mode: window-controls-overlay) {
-  .top { padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 16px); min-height: env(titlebar-area-height, 40px); }
-  .top::after { opacity: .8; }
-}
 .content.full { padding: 0; overflow: hidden; position: relative; }
 
 /* ---------- timer ---------- */
