@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+from pathlib import Path
 from typing import Any
 
 from .sections import billing_line, contract_sections
 from .graph import Graph
 from .timetrack import TimeTracker, _link_target
-from .vault import Vault
+from .vault import Vault, slugify
 
 STATUSES = ("draft", "sent", "paid", "void")
 
@@ -151,18 +152,122 @@ def render_body(meta: dict[str, Any]) -> str:
     return "\n".join(out)
 
 
-def set_status(vault: Vault, graph: Graph, path: str, status: str, tracker: TimeTracker | None = None) -> dict[str, Any]:
+def record(vault: Vault, graph: Graph, tracker: TimeTracker, contract_path: str, number: str, issued: str,
+           lines: list[dict[str, Any]], entry_ids: list[str], due: str | None = None, status: str = "sent",
+           sent: str | None = None, sent_to: str | None = None, unbilled: list[dict[str, Any]] | None = None,
+           notes: str | None = None) -> dict[str, Any]:
+    """Record an invoice that was produced/sent outside HIVE's generator, exactly as sent.
+
+    `lines` are the invoice's own lines (description, qty, rate[, amount]); `entry_ids` are the time entries
+    it covers, which get stamped so they're never billed twice. `unbilled` notes hours deliberately left off
+    (e.g. a capped overrun). Line hours vs entry hours are reconciled and stored, never silently forced equal."""
+    c = graph.notes.get(contract_path)
+    if not c or c.type != "contract":
+        raise ValueError(f"not a contract: {contract_path}")
+    if status not in STATUSES:
+        raise ValueError(f"status must be one of {STATUSES}")
+    number = number.strip()
+    if not number:
+        raise ValueError("invoice number required")
+    if any(n.type == "invoice" and str(n.meta.get("number")) == number for n in graph.notes.values()):
+        raise ValueError(f"invoice {number} already exists in HIVE")
+    issued_d = dt.date.fromisoformat(issued)
+    all_e = {e["id"]: e for e in tracker.all_entries()}
+    covered = []
+    if not isinstance(entry_ids, list) or not all(isinstance(x, str) for x in entry_ids):
+        raise ValueError("entry_ids must be a list of time-entry id strings")
+    if not isinstance(lines, list) or not all(isinstance(x, dict) for x in lines):
+        raise ValueError("lines must be a list of {description, qty, rate} objects")
+    for eid in entry_ids:
+        e = all_e.get(eid)
+        if not e:
+            raise ValueError(f"unknown time entry {eid}")
+        if not e.get("contract_name") or graph.resolve(e["contract_name"]) != contract_path:
+            raise ValueError(f"entry {eid} belongs to a different contract")
+        if e.get("invoice"):
+            raise ValueError(f"entry {eid} ({e['date']}) is already on {e['invoice']}")
+        if e.get("status") == "suggested":
+            raise ValueError(f"entry {eid} is an unconfirmed suggestion")
+        covered.append(e)
+    clean_lines = []
+    for x in lines:
+        qty, rate = float(x["qty"]), float(x["rate"])
+        clean_lines.append({"date": x.get("date") or "", "description": str(x["description"]), "qty": round(qty, 2),
+                            "unit": x.get("unit", "hour"), "rate": rate,
+                            "amount": _money(float(x["amount"]) if x.get("amount") is not None else qty * rate)})
+    if not clean_lines:
+        raise ValueError("an invoice needs at least one line")
+    covered.sort(key=lambda e: (e["date"], str(e.get("start") or "")))
+    timesheet = [{"date": e["date"], "section": e.get("section") or "Consulting services",
+                  "description": e.get("description") or "", "hours": round(e["minutes"] / 60, 2)} for e in covered]
+    entry_hours = round(sum(e["minutes"] for e in covered) / 60, 2)
+    line_hours = round(sum(x["qty"] for x in clean_lines if x["unit"] == "hour"), 2)
+    unbilled_h = round(sum(float(u.get("hours", 0)) for u in unbilled or []), 2)
+    prof = profile(graph)
+    terms = int(c.meta.get("payment_terms_days", prof.get("default_terms_days", 30)) or 30)
+    raw_client = _link_target(c.meta.get("client")) or ""
+    client_path = graph.resolve(raw_client) if raw_client else None
+    client_title = graph.notes[client_path].title if client_path in graph.notes else raw_client
+    meta = {
+        "type": "invoice", "number": number, "status": status, "source": "recorded",
+        "client": f"[[{client_title}]]" if client_title else None, "contract": f"[[{c.title}]]",
+        "issued": issued_d.isoformat(), "due": due or (issued_d + dt.timedelta(days=terms)).isoformat(),
+        "sent": (sent or issued_d.isoformat()) if status in ("sent", "paid") else None, "sent_to": sent_to,
+        "period_start": timesheet[0]["date"] if timesheet else issued_d.isoformat(),
+        "period_end": timesheet[-1]["date"] if timesheet else issued_d.isoformat(),
+        "currency": str(c.meta.get("currency", "USD")), "total": _money(sum(x["amount"] for x in clean_lines)),
+        "lines": clean_lines, "timesheet": timesheet or None, "entries": [e["id"] for e in covered],
+        "reconciliation": {"line_hours": line_hours, "entry_hours": entry_hours, "unbilled_hours": unbilled_h,
+                           "difference": round(entry_hours - line_hours - unbilled_h, 2)},
+        "unbilled": unbilled or None, "notes": notes, "tags": ["invoice"],
+    }
+    meta = {k: v for k, v in meta.items() if v is not None}
+    body = render_body(meta)
+    if unbilled:
+        body += "\n## Hours not billed on this invoice\n" + "\n".join(
+            f"- {u.get('section', '?')}: {float(u.get('hours', 0)):.2f} h ({u.get('reason', '')})" for u in unbilled) + "\n"
+    rel = f"invoices/{slugify(number)}.md"
+    vault.write(rel, meta, body, actor="ui", action="invoice-record")
+    for e in covered:
+        tracker.update(e["id"], {"invoice": f"[[{slugify(number)}]]"}, actor="invoice")
+    return {"path": rel, **meta}
+
+
+def attach_document(vault: Vault, graph: Graph, path: str, filename: str, data: bytes) -> dict[str, Any]:
+    """Store the invoice as sent (e.g. the PDF) under documents/<client>/invoices/ and link it from the note."""
+    n = graph.notes.get(path)
+    if not n or n.type != "invoice":
+        raise ValueError(f"not an invoice: {path}")
+    client = slugify(_link_target(n.meta.get("client")) or "Unassigned")
+    safe = slugify(Path(filename).stem) + (Path(filename).suffix.lower() or ".pdf")
+    rel = f"documents/{client}/invoices/{safe}"
+    dest = vault.safe_path(rel)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(data)
+    meta = dict(n.meta)
+    meta["document"] = rel
+    vault.write(path, meta, n.body, actor="ui", action="invoice-attach")
+    return {"path": path, "document": rel}
+
+
+def set_status(vault: Vault, graph: Graph, path: str, status: str, tracker: TimeTracker | None = None,
+               date: str | None = None, reference: str | None = None) -> dict[str, Any]:
+    """Change status. `date` records when it actually happened (sent/paid), defaulting to today."""
     if status not in STATUSES:
         raise ValueError(f"status must be one of {STATUSES}")
     n = graph.notes.get(path)
     if not n or n.type != "invoice":
         raise ValueError(f"not an invoice: {path}")
+    when = dt.date.fromisoformat(date).isoformat() if date else dt.date.today().isoformat()
     meta = dict(n.meta)
     meta["status"] = status
     if status == "sent":
-        meta.setdefault("sent", dt.date.today().isoformat())
+        meta["sent"] = when if date else meta.get("sent", when)
     if status == "paid":
-        meta["paid"] = dt.date.today().isoformat()
+        meta["paid"] = when
+        meta.setdefault("sent", meta.get("issued"))
+        if reference:
+            meta["payment_reference"] = reference
     if status == "void" and tracker is not None:
         # release the time so it can be billed again
         for eid in meta.get("entries") or []:

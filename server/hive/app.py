@@ -495,11 +495,48 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
     @app.post("/api/invoices/status")
     def invoice_status(payload: dict = Body(...)):
         try:
-            inv = invoices.set_status(hive.vault, hive.graph(), payload["path"], payload["status"], hive.tracker)
+            inv = invoices.set_status(hive.vault, hive.graph(), payload["path"], payload["status"], hive.tracker,
+                                      date=payload.get("date") or None, reference=payload.get("reference") or None)
         except (KeyError, ValueError) as e:
             err(e)
         hive.invalidate()
         return inv
+
+    @app.post("/api/invoices/record")
+    def invoice_record(payload: dict = Body(...)):
+        """Record an invoice sent outside HIVE. Entries: explicit `entry_ids`, or `start`/`end` (+ optional `sections`)."""
+        g = hive.graph()
+        try:
+            cpath = payload["contract"]
+            ids = payload.get("entry_ids")
+            if not ids:
+                secs = set(payload.get("sections") or [])
+                ids = [e["id"] for e in hive.tracker.all_entries()
+                       if e.get("contract_name") and g.resolve(e["contract_name"]) == cpath and not e.get("invoice")
+                       and e.get("status") != "suggested" and e.get("billable", True)
+                       and payload["start"] <= e["date"] <= payload["end"] and (not secs or e.get("section") in secs)]
+            inv = invoices.record(hive.vault, g, hive.tracker, cpath, payload["number"], payload["issued"],
+                                  payload["lines"], ids, due=payload.get("due"), status=payload.get("status", "sent"),
+                                  sent=payload.get("sent"), sent_to=payload.get("sent_to"),
+                                  unbilled=payload.get("unbilled"), notes=payload.get("notes"))
+        except (KeyError, ValueError) as e:
+            err(e)
+        hive.invalidate()
+        return inv
+
+    @app.post("/api/invoices/attach")
+    def invoice_attach(payload: dict = Body(...)):
+        """Attach the invoice document (base64 in JSON; no multipart dependency needed)."""
+        import base64
+        try:
+            data = base64.b64decode(payload["content_b64"], validate=True)
+            if len(data) > 25 * 1024 * 1024:
+                raise ValueError("file larger than 25 MB")
+            out = invoices.attach_document(hive.vault, hive.graph(), payload["path"], payload["filename"], data)
+        except (KeyError, ValueError) as e:
+            err(e)
+        hive.invalidate()
+        return out
 
     @app.get("/api/profile")
     def profile():

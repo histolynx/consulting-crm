@@ -50,6 +50,48 @@ def test_void_releases_time(crm_vault):
     assert again["total"] == 150.0 and again["number"].endswith("-002")
 
 
+def test_record_external_invoice_stamps_entries_and_reconciles(crm_vault):
+    tt = TimeTracker(crm_vault)
+    a = tt.add("2026-09-10", {"contract": "Acme Platform", "section": "Build", "minutes": 120})
+    b = tt.add("2026-09-11", {"contract": "Acme Platform", "section": "Export", "minutes": 90})
+    c = tt.add("2026-09-12", {"contract": "Acme Platform", "section": "Build", "minutes": 60})  # deliberately left off
+    inv = invoices.record(crm_vault, G(crm_vault), tt, "contracts/Acme Platform.md", "INV-ACME-001", "2026-09-30",
+                          [{"description": "Build", "qty": 2, "rate": 150}, {"description": "Export", "qty": 1, "rate": 150}],
+                          [a["id"], b["id"]], status="sent", sent_to="ap@acme.test",
+                          unbilled=[{"section": "Export", "hours": 0.5, "reason": "over estimate"}])
+    assert inv["total"] == 450.0 and inv["due"] == "2026-10-15" and inv["sent"] == "2026-09-30" and inv["source"] == "recorded"
+    assert inv["reconciliation"] == {"line_hours": 3.0, "entry_hours": 3.5, "unbilled_hours": 0.5, "difference": 0.0}
+    stamped = {e["id"]: e.get("invoice") for e in tt.all_entries()}
+    assert stamped[a["id"]] == stamped[b["id"]] == "[[INV-ACME-001]]" and stamped[c["id"]] is None
+    with pytest.raises(ValueError, match="already exists"):
+        invoices.record(crm_vault, G(crm_vault), tt, "contracts/Acme Platform.md", "INV-ACME-001", "2026-09-30",
+                        [{"description": "x", "qty": 1, "rate": 1}], [c["id"]])
+    with pytest.raises(ValueError, match="already on"):
+        invoices.record(crm_vault, G(crm_vault), tt, "contracts/Acme Platform.md", "INV-ACME-002", "2026-09-30",
+                        [{"description": "x", "qty": 1, "rate": 1}], [a["id"]])
+    # paid on a specific date with a reference; attach the PDF
+    paid = invoices.set_status(crm_vault, G(crm_vault), inv["path"], "paid", tt, date="2026-10-20", reference="ACH 4471")
+    assert paid["paid"] == "2026-10-20" and paid["payment_reference"] == "ACH 4471"
+    att = invoices.attach_document(crm_vault, G(crm_vault), inv["path"], "acme sept invoice.pdf", b"%PDF-1.4 x")
+    assert att["document"] == "documents/Acme/invoices/acme sept invoice.pdf"
+    assert (crm_vault.root / att["document"]).read_bytes() == b"%PDF-1.4 x"
+    s = invoices.summary(G(crm_vault), today=dt.date(2026, 10, 25))
+    assert s["paid_ytd"] == 450.0 and s["outstanding"] == 0
+
+
+def test_record_rejects_malformed_payload(crm_vault):
+    with pytest.raises(ValueError, match="entry_ids"):
+        invoices.record(crm_vault, G(crm_vault), TimeTracker(crm_vault), "contracts/Acme Platform.md", "X-1", "2026-09-30",
+                        [{"description": "x", "qty": 1, "rate": 1}], [{"value": "t_1"}])
+
+
+def test_sent_date_can_be_backdated(crm_vault):
+    tt = TimeTracker(crm_vault)
+    tt.add("2026-09-10", {"contract": "Acme Platform", "minutes": 60})
+    inv = invoices.generate(crm_vault, G(crm_vault), tt, "contracts/Acme Platform.md", "2026-09-01", "2026-09-30")
+    assert invoices.set_status(crm_vault, G(crm_vault), inv["path"], "sent", date="2026-09-30")["sent"] == "2026-09-30"
+
+
 def test_day_rate(crm_vault):
     tt = TimeTracker(crm_vault)
     tt.add("2026-09-10", {"contract": "Globex Graph", "minutes": 240})

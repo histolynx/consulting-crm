@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-05: v0.4.0, record sent invoices, attach documents, dated payments
+- `invoices.record()` / `POST /api/invoices/record`: record an invoice made or sent outside HIVE, exactly as sent (own number, lines, dates); stamps the covered entries; stores a line-hours vs entry-hours **reconciliation** and any hours deliberately not billed.
+- `POST /api/invoices/attach`: store the PDF under `documents/<client>/invoices/` (base64 JSON, no new dependency); 📎 opens it from the list and the preview.
+- Sent/paid can be **backdated** and payments take an optional reference. The list shows Sent and Paid columns, with a show-void toggle.
+- UI: **Record a sent invoice** form (period and section picker, fill lines from hours, editable lines, mismatch warning, PDF upload). Malformed payloads get a 400, not a 500. 71 tests.
+
 ## 2026-09-28: v0.3.2, smarter gap detection
 - Gap suggestions only for **active** contracts, and only for dates **inside the contract term** (start/end). Pre-sales emails on unsigned deals or before a start date no longer produce billable-time suggestions. 68 tests.
 
