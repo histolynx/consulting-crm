@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-09: v0.5.0, Sent mail, sync lock, opportunities
+- Mail fetch reads **Sent Mail** as well as Inbox (read-only, separate checkpoint, `s`-prefixed ids). Notes carry `direction`, and the ingest prompt treats sent mail as outreach: contacts are the recipients, no reply drafts.
+- **Cross-process sync lock** (`.hive/sync.lock`, stale after 60 min): the UI job and the scheduled CLI run can never ingest at the same time.
+- New **opportunity** note type (`opportunities/`) for jobs and recruiter outreach, kept out of the consulting pipeline.
+- Hourly sync + 7:30 briefing scheduled. Title-bar strip (v0.4.1). 73 tests.
+
 ## 2026-10-05: v0.4.0, record sent invoices, attach documents, dated payments
 - `invoices.record()` / `POST /api/invoices/record`: record an invoice made or sent outside HIVE, exactly as sent (own number, lines, dates); stamps the covered entries; stores a line-hours vs entry-hours **reconciliation** and any hours deliberately not billed.
 - `POST /api/invoices/attach`: store the PDF under `documents/<client>/invoices/` (base64 JSON, no new dependency); 📎 opens it from the list and the preview.

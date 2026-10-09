@@ -28,7 +28,7 @@ from .timetrack import TimeTracker
 from .vault import Vault
 
 FOLDERS = {"client": "clients", "contact": "contacts", "contract": "contracts", "project": "projects",
-           "meeting": "meetings", "note": "knowledge", "email": "emails", "draft": "outbox"}
+           "meeting": "meetings", "opportunity": "opportunities", "note": "knowledge", "email": "emails", "draft": "outbox"}
 ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
 
 

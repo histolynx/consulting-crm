@@ -47,6 +47,23 @@ def test_git_commit_uses_vault_own_repo(tmp_path):
     assert log[:2] == ["add A", "seed"]
 
 
+def test_sync_lock_blocks_concurrent_runs_and_clears_stale(tmp_path, monkeypatch):
+    import os
+    import time
+    from hive import pipeline
+    v = Vault(tmp_path / "v")
+    ran = []
+    monkeypatch.setattr(pipeline, "_sync", lambda *a: ran.append(1) or {"steps": []})
+    lock = v.root / ".hive" / "sync.lock"
+    lock.write_text("999 2026-10-09T12:00:00")
+    out = pipeline.sync(v)
+    assert ran == [] and "another sync is running" in out["skipped"]
+    old = time.time() - 2 * 3600
+    os.utime(lock, (old, old))  # crashed run left a stale lock
+    pipeline.sync(v)
+    assert ran == [1] and not lock.exists()  # ran, and released its own lock
+
+
 def test_git_commit_requires_repo(tmp_path):
     with pytest.raises(NotARepo):
         git_commit(Vault(tmp_path / "plain"), "x")

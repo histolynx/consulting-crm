@@ -79,5 +79,45 @@ def test_direct_message_to_note():
     assert "Hi\nthere & you" in body
 
 
+class _FakeImap:
+    """Two folders with overlapping UID numbers, like Gmail's INBOX and Sent Mail."""
+    def __init__(self, folders):
+        self.folders, self.cur = folders, None
+
+    def select(self, folder, readonly=True):
+        assert readonly
+        self.cur = folder
+        return "OK", [b"1"]
+
+    def response(self, _):
+        return "UIDVALIDITY", [b"77"]
+
+    def uid(self, cmd, *args):
+        msgs = self.folders[self.cur]
+        if cmd == "SEARCH":
+            return "OK", [b" ".join(str(u).encode() for u in msgs)]
+        return "OK", [(b"1", msgs[int(args[0])])]
+
+    def logout(self):
+        pass
+
+
+def test_fetch_reads_inbox_and_sent_without_uid_collisions(vault, monkeypatch):
+    from hive import mail as mail_mod
+    inbound = _msg("Hello from a client")
+    sent = EmailMessage()
+    sent["From"], sent["To"], sent["Subject"] = "Me <me@hive.test>", "Jane Doe <jane@acme.test>", "Follow up"
+    sent["Date"] = "Thu, 08 Oct 2026 12:42:00 -0500"
+    sent.set_content("Yes, let's talk!")
+    fake = _FakeImap({"INBOX": {5: inbound}, '"[Gmail]/Sent Mail"': {5: sent.as_bytes()}})
+    monkeypatch.setattr(mail_mod.Mailbox, "_connect", lambda self: fake)
+    written = mail_mod.Mailbox(vault).fetch_new()
+    assert len(written) == 2 and any("(5).md" in w for w in written) and any("(s5).md" in w for w in written)
+    sent_note = vault.read([w for w in written if "(s5)" in w][0])
+    assert sent_note.meta["direction"] == "sent" and sent_note.meta["to"] == "jane@acme.test" and "sent" in sent_note.tags
+    assert vault.state("mail")["last_uid"] == 5 and vault.state("mail_sent")["last_uid"] == 5
+    assert mail_mod.Mailbox(vault).fetch_new() == []  # checkpoints per folder: nothing re-fetched
+
+
 def test_html_to_text_strips_scripts():
     assert html_to_text("<style>x{}</style><ul><li>a</li><li>b</li></ul>") == "- a\n- b"

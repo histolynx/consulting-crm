@@ -149,7 +149,7 @@ def parse_message(raw: bytes) -> dict[str, Any]:
     return parsed
 
 
-def to_note(parsed: dict[str, Any], uid: str) -> tuple[str, dict[str, Any], str]:
+def to_note(parsed: dict[str, Any], uid: str, direction: str = "received") -> tuple[str, dict[str, Any], str]:
     fwd = parsed["forwarded"]
     orig_from = f"{fwd['from_name']} <{fwd['from_email']}>" if fwd else f"{parsed['from_name']} <{parsed['from_email']}>"
     orig_date = (_parse_loose_date(fwd["date_raw"]) if fwd else None) or (parsed["date"] or "")[:10] or dt.date.today().isoformat()
@@ -160,7 +160,8 @@ def to_note(parsed: dict[str, Any], uid: str) -> tuple[str, dict[str, Any], str]
         "subject": subject, "from": orig_from, "forwarded": bool(fwd),
         "forwarded_by": f"{parsed['from_name']} <{parsed['from_email']}>" if fwd else None,
         "to": fwd.get("to") if fwd else ", ".join(parsed["to"]), "cc": (fwd.get("cc") if fwd else ", ".join(parsed["cc"])) or None,
-        "message_id": parsed["message_id"], "tags": ["inbox"],
+        "message_id": parsed["message_id"], "direction": direction,
+        "tags": ["inbox"] if direction == "received" else ["inbox", "sent"],
     }
     meta = {k: v for k, v in meta.items() if v not in (None, "")}
     body_parts = [f"# {subject}", ""]
@@ -179,14 +180,31 @@ class Mailbox:
         user, pw = require_gmail_login()
         return imap_login(user, pw)
 
+    # (IMAP folder, state key, uid label prefix, direction). Sent mail matters for a CRM: people the owner
+    # writes to first (or replies to after they reached a different address) only ever appear there.
+    FOLDERS = [("INBOX", "mail", "", "received"), ('"[Gmail]/Sent Mail"', "mail_sent", "s", "sent")]
+
     def fetch_new(self, limit: int = 200) -> list[str]:
-        state = self.vault.state("mail", {})
+        written: list[str] = []
         imap = self._connect()
+        try:
+            for folder, key, prefix, direction in self.FOLDERS:
+                written += self._fetch_folder(imap, folder, key, prefix, direction, limit)
+        finally:
+            try:
+                imap.logout()
+            except Exception:  # noqa: BLE001 - logout failure is irrelevant once data is saved
+                pass
+        return written
+
+    def _fetch_folder(self, imap: imaplib.IMAP4_SSL, folder: str, key: str, prefix: str, direction: str,
+                      limit: int) -> list[str]:
+        state = self.vault.state(key, {})
         written: list[str] = []
         try:
-            typ, data = imap.select("INBOX", readonly=True)
+            typ, data = imap.select(folder, readonly=True)
             if typ != "OK":
-                raise RuntimeError(f"IMAP select failed: {data}")
+                raise RuntimeError(f"IMAP select {folder} failed: {data}")
             _, uv = imap.response("UIDVALIDITY")
             uidvalidity = (uv[0] or b"").decode() if uv and uv[0] else ""
             if state.get("uidvalidity") != uidvalidity:
@@ -203,29 +221,26 @@ class Mailbox:
                 if not raw:
                     continue
                 parsed = parse_message(raw)
-                rel, meta, body = to_note(parsed, str(uid))
+                label = f"{prefix}{uid}"
+                rel, meta, body = to_note(parsed, label, direction)
                 if parsed["attachments"]:
                     links, saved = [], []
                     for name, blob in parsed["attachments"]:
                         safe = re.sub(r'[\\/:*?"<>|]', "_", name)
-                        p = self.vault.root / "attachments" / str(uid) / safe
+                        p = self.vault.root / "attachments" / label / safe
                         p.parent.mkdir(parents=True, exist_ok=True)
                         p.write_bytes(blob)
-                        saved.append(f"attachments/{uid}/{safe}")
-                        links.append(f"- [{safe}](../attachments/{uid}/{safe.replace(' ', '%20')})")
+                        saved.append(f"attachments/{label}/{safe}")
+                        links.append(f"- [{safe}](../attachments/{label}/{safe.replace(' ', '%20')})")
                     meta["attachments"] = saved
                     body += "\n## Attachments\n" + "\n".join(links) + "\n"
-                self.vault.write(rel, meta, body, actor="mail", action="fetch")
+                self.vault.write(rel, meta, body, actor="mail", action=f"fetch-{direction}")
                 written.append(rel)
                 state["last_uid"] = uid
-                self.vault.set_state("mail", state)  # checkpoint after every message
+                self.vault.set_state(key, state)  # checkpoint after every message
         finally:
-            try:
-                imap.logout()
-            except Exception:  # noqa: BLE001 - logout failure is irrelevant once data is saved
-                pass
-        state["last_fetch"] = dt.datetime.now().isoformat(timespec="seconds")
-        self.vault.set_state("mail", state)
+            state["last_fetch"] = dt.datetime.now().isoformat(timespec="seconds")
+            self.vault.set_state(key, state)
         return written
 
     def pending_drafts(self) -> list[str]:

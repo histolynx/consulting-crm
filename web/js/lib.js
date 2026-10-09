@@ -109,7 +109,7 @@ export const initials = (name = '') => name.replace(/^(Dr|Mr|Ms|Mrs)\.?\s+/i, ''
 
 // Node palette (also used by the graph legend)
 export const TYPE_COLORS = {
-  profile: '#ffffff', client: '#f5a524', contact: '#5aa9e6', contract: '#4cc38a', project: '#3cc6c0',
+  profile: '#ffffff', client: '#f5a524', contact: '#5aa9e6', contract: '#4cc38a', opportunity: '#9be15d', project: '#3cc6c0',
   meeting: '#e86fb0', email: '#a68cff', note: '#ffc85c', knowledge: '#ffc85c', invoice: '#d9822b',
   timelog: '#6b7280', briefing: '#c0c7d1', inbox: '#7c6bb0', draft: '#b08cff', tag: '#3a4452', ghost: '#4a4f58', system: '#5d6573',
 };

@@ -25,6 +25,7 @@ It opens directly in Obsidian. Never break these rules:
 | client | clients/ | industry, website, status (prospect/active/past), aliases |
 | contact | contacts/ | name, org: "[[Client]]", role, email, phone, linkedin, relationship (champion/decision-maker/technical/referrer/other), last_contact, aliases |
 | contract | contracts/ | client, status (lead/proposal/negotiating/active/paused/complete/lost), value, rate, rate_unit (hour/day/fixed), currency, start, end, budget_hours, payment_terms_days, probability, expected_close, next_step, stakeholders: ["[[Person]]"], sow, milestones: [{name, amount, due, status}] |
+| opportunity | opportunities/ | kind (employment/advisory/board), company: "[[Client]]", via: "[[Recruiter or agency]]", role, status (applied/interviewing/offer/accepted/declined/closed), next_step, comp. Use for jobs and recruiter outreach: NOT a contract, never counted in the consulting pipeline |
 | project | projects/ | contract, client, status, stack: ["[[Tech]]"] |
 | meeting | meetings/ | date, duration (minutes), attendees: ["[[Person]]"], client, contract |
 | email | emails/ | date, from: "[[Person]]", to: ["[[Person]]"], client, contract, summary, source: "[[inbox note]]", needs_reply (bool) |

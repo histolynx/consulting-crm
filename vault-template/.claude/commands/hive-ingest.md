@@ -5,13 +5,17 @@ You are processing newly fetched email into the HIVE knowledge graph. Follow CLA
 
 1. Glob `inbox/*.md` and Read each note whose frontmatter has `status: new`. Also read `me.md` (the owner).
    Emails are usually forwarded by the owner; the `from` field is already the ORIGINAL sender.
+   **direction: sent** means the OWNER wrote this email from the hive account. Treat everyone in `to`/`cc` as the
+   contacts (never create a contact for the owner), log it as outreach (e.g. `- YYYY-MM-DD: owner emailed ...`),
+   set `needs_reply: false` and write NO reply draft. Use the quoted thread below the owner's text to learn who the
+   other person is and what they asked. Skip trivial sent mail (calendar accepts, one-line thanks) by marking it `ignored`.
 2. For each email:
    a. **People & orgs.** Find or create `contacts/` notes for every real person involved (sender, recipients, people
       named in signatures). Match on email address, then name, then aliases before creating. Fill role, phone, org
       from signatures. Find or create the `clients/` note for their company (infer from email domain; skip gmail/outlook etc).
    b. **Contract facts.** If the email concerns a contract/deal (SOW, rate, dates, scope, budget, PO, invoice, renewal),
       update the matching `contracts/` note's frontmatter. If it describes a NEW opportunity, create a contract with
-      `status: lead` or `proposal`. Record the change in the contract body under `## Log` as `- YYYY-MM-DD: ... ([[email note]])`.
+      `status: lead` or `proposal`. Job/recruiter emails (employment roles) go in an `opportunities/` note (type: opportunity), never a contract. Record the change in the contract body under `## Log` as `- YYYY-MM-DD: ... ([[email note]])`.
    c. **Email note.** Create `emails/YYYY-MM-DD <Subject>.md` (type: email) with from/to/client/contract links, a 2-4
       sentence `summary`, `needs_reply`, `source: "[[<inbox note filename stem>]]"`, and body sections
       `## Summary`, `## Key facts`, `## Action items` (checkbox tasks with 📅 due dates when stated or implied).
