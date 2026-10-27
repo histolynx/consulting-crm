@@ -18,7 +18,7 @@ You are processing newly fetched email into the HIVE knowledge graph. Follow CLA
       `status: lead` or `proposal`. Job/recruiter emails (employment roles) go in an `opportunities/` note (type: opportunity), never a contract. Record the change in the contract body under `## Log` as `- YYYY-MM-DD: ... ([[email note]])`.
    c. **Email note.** Create `emails/YYYY-MM-DD <Subject>.md` (type: email) with from/to/client/contract links, a 2-4
       sentence `summary`, `needs_reply`, `source: "[[<inbox note filename stem>]]"`, and body sections
-      `## Summary`, `## Key facts`, `## Action items` (checkbox tasks with 📅 due dates when stated or implied).
+      `## Summary`, `## Key facts`, `## Action items`. In the email note write action items as **plain bullets** that point to their home (`- Send revised SOW → [[Contract]]`). Put the actual **checkbox task** (`- [ ] … 📅 YYYY-MM-DD`) **once**, in the home note (the contract, project, opportunity or contact it belongs to), under `## Tasks`, after checking it isn't already there. HIVE ignores checkboxes in email notes.
    d. **Meetings.** If a meeting is scheduled, create `meetings/YYYY-MM-DD <Title>.md` with attendees and a prep task.
    e. **Knowledge.** If the email contains reusable technical/business knowledge, create or extend a `knowledge/` note and link it.
    f. **Reply draft.** If `needs_reply` is true, write `outbox/YYYY-MM-DD Re <Subject>.md` (type: draft,

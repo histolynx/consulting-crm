@@ -119,9 +119,16 @@ def contracts(graph: Graph, tracker: TimeTracker, today: dt.date | None = None) 
     return out
 
 
+# Notes whose checkboxes are copies or records, never the source of truth for a task: a daily briefing restates
+# due tasks, an email note summarizes action items whose real task lives in the contract/project/person note.
+NON_TASK_TYPES = {"briefing", "email", "inbox", "draft", "system", "timelog", "invoice"}
+
+
 def tasks(graph: Graph, include_done: bool = False) -> list[dict[str, Any]]:
     out = []
     for p, n in graph.notes.items():
+        if n.type in NON_TASK_TYPES:
+            continue
         for t in n.tasks:
             if t.done and not include_done:
                 continue

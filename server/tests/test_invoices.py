@@ -109,6 +109,13 @@ def test_fixed_fee_milestones(crm_vault):
     assert ms[0]["invoice"] == f"[[{inv['number']}]]" and "invoice" not in ms[1]
 
 
+def test_tasks_ignore_briefings_and_email_copies(crm_vault):
+    crm_vault.write("briefings/2026-09-25.md", {"type": "briefing"}, "- [ ] Send SOW 📅 2026-09-25\n")
+    crm_vault.write("emails/2026-09-22 Copy.md", {"type": "email"}, "- [ ] Send SOW 📅 2026-09-25\n")
+    ts = crm.tasks(G(crm_vault))
+    assert [t["path"] for t in ts if t["text"].startswith("Send SOW")] == ["contracts/Acme Platform.md"]
+
+
 def test_future_meeting_is_not_a_touch(crm_vault):
     crm_vault.write("meetings/2026-10-30 Sync.md", {"type": "meeting", "date": "2026-10-30", "attendees": ["[[Hank Scorpio]]"]}, "")
     people = {c["path"]: c for c in crm.contacts(G(crm_vault), today=dt.date(2026, 9, 24))}

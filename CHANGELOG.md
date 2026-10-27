@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27: v0.5.2, one task, one home
+- Tasks are read only from home notes (contracts, projects, opportunities, contacts, clients, meetings, knowledge). Checkboxes in **briefings** and **email notes** are ignored: briefings restated every due task daily, and email notes duplicated the contract's task, which inflated 'Due within 7 days' (292 open, mostly copies).
+- The brief prompt writes plain bullets; the ingest prompt writes each checkbox task once, in its home note. 75 tests.
+
 ## 2026-10-27: v0.5.1, agent failures are no longer silent
 - Bug: when the agent's Claude login expired, `claude` exited 1 but the sync's ingest step still reported ok, so emails piled up unnoticed. Agent errors now **fail the step** (`agent_ok`) with a pointer to `scripts\claude-login.ps1`; the morning brief fails loudly too.
 - The dashboard shows a red banner when the last sync had failed steps. `restart-hive.cmd` for a double-click restart. 74 tests.
