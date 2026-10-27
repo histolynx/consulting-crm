@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27: v0.5.1, agent failures are no longer silent
+- Bug: when the agent's Claude login expired, `claude` exited 1 but the sync's ingest step still reported ok, so emails piled up unnoticed. Agent errors now **fail the step** (`agent_ok`) with a pointer to `scripts\claude-login.ps1`; the morning brief fails loudly too.
+- The dashboard shows a red banner when the last sync had failed steps. `restart-hive.cmd` for a double-click restart. 74 tests.
+
 ## 2026-10-09: v0.5.0, Sent mail, sync lock, opportunities
 - Mail fetch reads **Sent Mail** as well as Inbox (read-only, separate checkpoint, `s`-prefixed ids). Notes carry `direction`, and the ingest prompt treats sent mail as outreach: contacts are the recipients, no reply drafts.
 - **Cross-process sync lock** (`.hive/sync.lock`, stale after 60 min): the UI job and the scheduled CLI run can never ingest at the same time.

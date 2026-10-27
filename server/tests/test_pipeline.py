@@ -64,6 +64,19 @@ def test_sync_lock_blocks_concurrent_runs_and_clears_stale(tmp_path, monkeypatch
     assert ran == [1] and not lock.exists()  # ran, and released its own lock
 
 
+def test_failed_agent_run_fails_the_step(tmp_path, monkeypatch):
+    from hive import pipeline
+    v = Vault(tmp_path / "v")
+    (v.root / "inbox").mkdir(parents=True)
+    (v.root / "inbox" / "a.md").write_text("---\ntype: inbox\nstatus: new\n---\nhi\n")
+    monkeypatch.setattr(pipeline, "command_prompt", lambda *a: "prompt")
+    monkeypatch.setattr(pipeline.Agent, "run", lambda self, *a, **k: {
+        "kind": "error", "text": "Failed to authenticate: OAuth session expired", "tools": 0})
+    report = pipeline.sync(v, fetch=False, push=False, gaps=False)
+    ingest = [s for s in report["steps"] if s["step"] == "ingest"][0]
+    assert ingest["ok"] is False and "claude-login" in ingest["error"]  # loud, with the fix
+
+
 def test_git_commit_requires_repo(tmp_path):
     with pytest.raises(NotARepo):
         git_commit(Vault(tmp_path / "plain"), "x")

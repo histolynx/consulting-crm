@@ -52,6 +52,10 @@ export function Dashboard({ tick }) {
     <button class="btn primary" disabled=${jobs.brief?.running} onClick=${() => runJob('brief')}>${jobs.brief?.running ? '☀ Writing…' : '☀ Brief me'}</button>
   </div>
 
+  ${d.last_sync && d.last_sync.steps.some((s) => !s.ok) && html`<div class="card" style="margin-bottom:16px;border-color:var(--red)">
+    <h3 style="color:var(--red)">⚠ Last sync had problems (${d.last_sync.finished?.replace('T', ' ')})</h3>
+    ${d.last_sync.steps.filter((s) => !s.ok).map((s) => html`<div style="font-size:13px"><b>${s.step}:</b> ${s.error}</div>`)}
+    <div class="dim" style="font-size:12px;margin-top:6px">Emails stay queued in the inbox until this is fixed; nothing is lost.</div></div>`}
   <div class="kpis">
     <${Kpi} label="Active contracts" value=${compactMoney(k.active_value)} sub=${`${k.active_contracts} running`} onClick=${() => go('contracts')} />
     <${Kpi} label="Pipeline (weighted)" value=${compactMoney(k.pipeline_weighted)} sub=${`${k.pipeline_count} deals in play`} color="var(--violet)" onClick=${() => go('contracts')} />

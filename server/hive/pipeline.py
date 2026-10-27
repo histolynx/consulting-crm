@@ -146,7 +146,7 @@ def _sync(vault: Vault, fetch: bool, ingest: bool, push: bool, gaps: bool) -> di
     if ingest:
         new = [p for p in (vault.root / "inbox").glob("*.md") if vault.read(p.relative_to(vault.root).as_posix()).meta.get("status") == "new"]
         if new:
-            step("ingest", lambda: Agent(vault).run(command_prompt(vault, "hive-ingest"), mode="write", task="ingest"))
+            step("ingest", lambda: agent_ok(Agent(vault).run(command_prompt(vault, "hive-ingest"), mode="write", task="ingest")))
         else:
             report["steps"].append({"step": "ingest", "ok": True, "result": "inbox empty"})
     if push:
@@ -160,9 +160,23 @@ def _sync(vault: Vault, fetch: bool, ingest: bool, push: bool, gaps: bool) -> di
     return report
 
 
+class AgentFailed(RuntimeError):
+    pass
+
+
+def agent_ok(res: dict[str, Any]) -> dict[str, Any]:
+    """An agent run that errored (e.g. expired Claude login) must FAIL its pipeline step, not report ok."""
+    if res.get("kind") == "error" or res.get("is_error"):
+        text = str(res.get("text") or "agent run failed").strip()
+        if "authenticat" in text.lower() or "oauth" in text.lower() or "not logged in" in text.lower():
+            text += " | HIVE's Claude login needs renewing: run scripts\\claude-login.ps1 (Setup page shows the account)."
+        raise AgentFailed(text)
+    return res
+
+
 def brief(vault: Vault) -> dict[str, Any]:
     snapshot(vault)
-    res = Agent(vault).run(command_prompt(vault, "hive-brief"), mode="write", task="brief")
+    res = agent_ok(Agent(vault).run(command_prompt(vault, "hive-brief"), mode="write", task="brief"))
     try:
         res["commit"] = git_commit(vault, f"hive briefing {dt.date.today()}")
     except (NotARepo, subprocess.CalledProcessError) as e:
