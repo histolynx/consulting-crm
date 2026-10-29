@@ -24,6 +24,7 @@ from . import creds
 from .config import SECRETS_FILE, claude_account, gmail_login, load_settings, read_secrets
 from .graph import Graph
 from .mail import LoginFailed, Mailbox, imap_login
+from .cleanup import Cleanup
 from .orchestrator import Orchestrator
 from .timetrack import TimeTracker
 from .vault import Vault
@@ -620,6 +621,32 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
             err(e)
         hive.invalidate()
         return res
+
+    # ---------------- folder cleanup (AI plans, owner ticks, script moves, undoable) ----------------
+    @app.post("/api/cleanup/plan")
+    def cleanup_plan(payload: dict = Body(...)):
+        try:
+            return Cleanup(hive.vault).plan(payload["folder"])
+        except (KeyError, ValueError) as e:
+            err(e)
+
+    @app.post("/api/cleanup/apply")
+    def cleanup_apply(payload: dict = Body(...)):
+        try:
+            return Cleanup(hive.vault).apply(payload["plan"], [str(x) for x in payload.get("ops") or []])
+        except KeyError as e:
+            err(e, 404)
+
+    @app.post("/api/cleanup/undo")
+    def cleanup_undo(payload: dict = Body(...)):
+        try:
+            return Cleanup(hive.vault).undo(payload["plan"])
+        except (KeyError, ValueError) as e:
+            err(e)
+
+    @app.get("/api/cleanup/runs")
+    def cleanup_runs():
+        return Cleanup(hive.vault).runs()
 
     @app.post("/api/orchestrator/config")
     def orch_config(payload: dict = Body(...)):

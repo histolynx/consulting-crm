@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { html, api, openNote, toast, refreshAll, hashColor } from '../lib.js';
+import { CleanupCard } from './cleanup.js';
 
 function AreaChip({ area }) {
   if (!area) return null;
@@ -82,6 +83,7 @@ export function Orchestrator({ tick }) {
     <span class="sp"></span>${d.open.some((p) => p.status === 'proposed' && !p.question && (p.suggestion?.confidence || 0) >= 0.8) && html`<button class="btn" disabled=${busy} onClick=${bulk} title="Copy every proposal that is at least 80% sure and has no open question">⇩ File all confident (≥80%)</button>`}<button class="btn primary" disabled=${busy} onClick=${scan}>⟳ Scan now</button></div>
   ${d.open.length ? d.open.map((p) => html`<${Card} key=${p.id} p=${p} areas=${d.areas} homes=${homes} onDone=${() => { load(); refreshAll(); }} />`)
     : html`<div class="card"><div class="empty">Nothing waiting. New work files in your watched folders will show up here.</div></div>`}
+  <${CleanupCard} folders=${d.config.watch} />
   <div class="grid2" style="margin-top:16px">
     <div class="card"><h3>Recently filed</h3><div class="list">${d.recent.map((p) => html`<div class="li">
       <span class=${'chip ' + (p.status === 'filed' ? 'green' : '')}>${p.status}</span><span class="sp">${p.name}</span>

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-29: v0.6.1, folder cleanup (plan, tick, apply, undo)
+- `hive/cleanup.py`: **plan** a watched folder (read-only). Each file gets one category: already in HIVE → `<folder>/Processed/`; confident work file (≥60%, no open question) → `<drive_root>/<Area>/<Topic>/` (default `G:/My Drive/Work`); exact duplicate (sha256, newest kept, " (1)" names lose) → `<folder>/_HIVE_Holding/<date>/`; anything else stays put as "needs you".
+- **Apply** moves only the ticked ops with a deterministic script (never overwrites: `name (2).ext`) and keeps Orchestrator proposals pointing at the new path. **Undo** reverses a whole run. Nothing is deleted; personal files are never listed or touched. Plans and runs live in `.hive/cleanup/`, with an audit entry for each apply and undo.
+- Orchestrator page: "Clean up a folder" card with a grouped, checkbox review modal and per-run Undo. 86 tests.
+
 ## 2026-10-29: v0.6.0, HIVE Orchestrator (phase 1)
 - `hive/orchestrator.py`: watches work folders (default Downloads + Desktop, depth 3), filters personal files by **name/folder only** (never read; stored only as salted hashes), classifies work files with the agent (text excerpts only; PDFs/Office by name) into **areas** (Consulting, Committee of 100, Yale, MSU, Research, Career), and queues **filing proposals**. Files move only on approve: copy by default, move on request; markdown becomes graph notes under `library/<Area>/<Topic>/`, other files go to `documents/` with a stub note.
 - Orchestrator page (cards, clickable questions, area/topic/project edits, bulk-file confident items, watched folders), Windows toast notifications (`hive/notify.py`, built-in WinRT), a 15-minute scheduled task, area hub notes, and schema rules.
