@@ -9,7 +9,7 @@ $py = "$env:LOCALAPPDATA\hive\.venv\Scripts\python.exe"
 $log = "$root\vault\.hive\scheduler.log"
 
 if ($Remove) {
-    foreach ($n in 'HIVE Sync', 'HIVE Brief') { Unregister-ScheduledTask -TaskName $n -Confirm:$false -ErrorAction SilentlyContinue }
+    foreach ($n in 'HIVE Sync', 'HIVE Brief', 'HIVE Orchestrator') { Unregister-ScheduledTask -TaskName $n -Confirm:$false -ErrorAction SilentlyContinue }
     Write-Host 'Removed HIVE scheduled tasks.'; exit 0
 }
 if (-not (Test-Path $py)) { throw "venv missing: run .\hive.ps1 -Setup first" }
@@ -23,5 +23,7 @@ $hourly = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddHours((Get-Date)
 $morning = New-ScheduledTaskTrigger -Daily -At $BriefAt
 
 Register-ScheduledTask -TaskName 'HIVE Sync' -Action (New-HiveAction 'sync') -Trigger $hourly -Settings $settings -Description 'HIVE hourly mail sync + ingest' -Force | Out-Null
+$quarter = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) -RepetitionInterval (New-TimeSpan -Minutes 15)
+Register-ScheduledTask -TaskName 'HIVE Orchestrator' -Action (New-HiveAction 'orchestrate') -Trigger $quarter -Settings $settings -Description 'HIVE Orchestrator: watch work folders, propose filing' -Force | Out-Null
 Register-ScheduledTask -TaskName 'HIVE Brief' -Action (New-HiveAction 'brief') -Trigger $morning -Settings $settings -Description 'HIVE morning briefing' -Force | Out-Null
-Write-Host "Registered 'HIVE Sync' (hourly) and 'HIVE Brief' (daily $BriefAt). Log: $log"
+Write-Host "Registered 'HIVE Sync' (hourly), 'HIVE Orchestrator' (every 15 min) and 'HIVE Brief' (daily $BriefAt). Log: $log"

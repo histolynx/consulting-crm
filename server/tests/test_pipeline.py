@@ -57,7 +57,7 @@ def test_sync_lock_blocks_concurrent_runs_and_clears_stale(tmp_path, monkeypatch
     lock = v.root / ".hive" / "sync.lock"
     lock.write_text("999 2026-10-09T12:00:00")
     out = pipeline.sync(v)
-    assert ran == [] and "another sync is running" in out["skipped"]
+    assert ran == [] and "another sync run is in progress" in out["skipped"]
     old = time.time() - 2 * 3600
     os.utime(lock, (old, old))  # crashed run left a stale lock
     pipeline.sync(v)

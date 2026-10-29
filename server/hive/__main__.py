@@ -1,4 +1,4 @@
-"""CLI:  python -m hive serve | sync | brief | fetch | gaps"""
+"""CLI:  python -m hive serve | sync | brief | fetch | gaps | init | orchestrate"""
 from __future__ import annotations
 
 import argparse
@@ -7,6 +7,34 @@ import sys
 
 from .config import load_settings
 from .vault import Vault
+
+
+def orchestrate(vault: Vault) -> dict:
+    """Scan watched folders, classify new work files with the agent (no run logs: private), notify if any await review.
+    Holds the 'orchestrate' lock so a scheduled run and a manual/UI run never overlap."""
+    from .agent import Agent
+    from .graph import Graph
+    from .notify import toast
+    from .orchestrator import Orchestrator, ensure_area_hubs
+    from .pipeline import SyncBusy, _acquire_lock
+    try:
+        lock = _acquire_lock(vault, "orchestrate")
+    except SyncBusy as e:
+        return {"skipped": str(e)}
+    try:
+        ensure_area_hubs(vault)
+        o = Orchestrator(vault)
+        out = o.scan()
+        if any(p["status"] == "new" for p in o.proposals()):
+            out.update(o.classify(Graph.build(vault.load_all()),
+                                  lambda prompt: Agent(vault).run(prompt, mode="read", task="orchestrate", private=True)))
+            n = sum(p["status"] == "proposed" for p in o.proposals())
+            if n and out.get("new"):
+                toast("HIVE Orchestrator", f"{n} file(s) ready to file. Open HIVE → Orchestrator.", "http://127.0.0.1:8787/#orchestrator")
+        out.pop("names", None)  # scheduled runs log to a file: counts only, never file names
+        return out
+    finally:
+        lock.unlink(missing_ok=True)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -19,6 +47,7 @@ def main(argv: list[str] | None = None) -> int:
     sy.add_argument("--no-ingest", action="store_true")
     sub.add_parser("brief")
     sub.add_parser("init", help="scaffold the vault from vault-template/ and make it its own git repo")
+    sub.add_parser("orchestrate", help="scan watched folders, classify new work files, notify")
     sub.add_parser("fetch")
     sub.add_parser("gaps")
     a = ap.parse_args(argv)
@@ -41,8 +70,11 @@ def main(argv: list[str] | None = None) -> int:
         out = pipeline.init_vault(load_settings().vault, PROJECT_ROOT / "vault-template")
         print(json.dumps({"vault": str(load_settings().vault), "created": out}, indent=2))
         return 0
+
     vault = Vault(load_settings().vault)
-    if a.cmd == "sync":
+    if a.cmd == "orchestrate":
+        out = orchestrate(vault)
+    elif a.cmd == "sync":
         out = pipeline.sync(vault, fetch=not a.no_fetch, ingest=not a.no_ingest)
     elif a.cmd == "brief":
         out = pipeline.brief(vault)

@@ -97,9 +97,9 @@ class SyncBusy(RuntimeError):
     pass
 
 
-def _acquire_lock(vault: Vault) -> Path:
-    """Cross-process lock (UI job vs. scheduled CLI run): two agents must never ingest the same inbox at once."""
-    lock = vault.root / ".hive" / "sync.lock"
+def _acquire_lock(vault: Vault, name: str = "sync") -> Path:
+    """Cross-process lock (UI job vs. scheduled CLI run): two agents must never work the same queue at once."""
+    lock = vault.root / ".hive" / f"{name}.lock"
     try:
         fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         os.write(fd, f"{os.getpid()} {dt.datetime.now().isoformat(timespec='seconds')}".encode())
@@ -108,10 +108,10 @@ def _acquire_lock(vault: Vault) -> Path:
     except FileExistsError:
         age_min = (time.time() - lock.stat().st_mtime) / 60
         if age_min < LOCK_STALE_MIN:
-            raise SyncBusy(f"another sync is running (lock {age_min:.0f} min old: {lock.read_text(errors='replace')})")
+            raise SyncBusy(f"another {name} run is in progress (lock {age_min:.0f} min old: {lock.read_text(errors='replace')})")
         lock.unlink(missing_ok=True)  # stale lock from a crashed run
         vault.audit("pipeline", "stale-lock-cleared", str(lock), age_min=round(age_min))
-        return _acquire_lock(vault)
+        return _acquire_lock(vault, name)
 
 
 def sync(vault: Vault, fetch: bool = True, ingest: bool = True, push: bool = True, gaps: bool = True) -> dict[str, Any]:

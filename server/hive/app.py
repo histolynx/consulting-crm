@@ -24,6 +24,7 @@ from . import creds
 from .config import SECRETS_FILE, claude_account, gmail_login, load_settings, read_secrets
 from .graph import Graph
 from .mail import LoginFailed, Mailbox, imap_login
+from .orchestrator import Orchestrator
 from .timetrack import TimeTracker
 from .vault import Vault
 
@@ -587,6 +588,48 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
                 except Exception as e:  # noqa: BLE001 - surfaced to the UI, not swallowed
                     yield f"data: {json.dumps({'kind': 'error', 'text': f'edits saved but not committed: {e}'})}\n\n"
         return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+
+    # ---------------- orchestrator ----------------
+    @app.get("/api/orchestrator")
+    def orch_get():
+        return Orchestrator(hive.vault).summary()
+
+    @app.post("/api/orchestrator/scan")
+    def orch_scan():
+        """Scan + classify in the background, through the same locked path as the 15-minute task."""
+        from .__main__ import orchestrate
+        hive.run_job("orchestrate", lambda: orchestrate(hive.vault))
+        return {"started": True}
+
+    @app.post("/api/orchestrator/decide")
+    def orch_decide(payload: dict = Body(...)):
+        try:
+            p = Orchestrator(hive.vault).decide(payload["id"], payload["action"], area=payload.get("area"),
+                                                topic=payload.get("topic"), home=payload.get("home"), answer=payload.get("answer"))
+        except (KeyError, ValueError, FileNotFoundError) as e:
+            err(e)
+        hive.invalidate()
+        return p
+
+    @app.post("/api/orchestrator/bulk")
+    def orch_bulk(payload: dict = Body(default={})):
+        o = Orchestrator(hive.vault)
+        try:
+            res = o.bulk(float(payload.get("min_confidence", 0.8)), payload.get("area") or None, payload.get("action", "copy"))
+        except ValueError as e:
+            err(e)
+        hive.invalidate()
+        return res
+
+    @app.post("/api/orchestrator/config")
+    def orch_config(payload: dict = Body(...)):
+        o = Orchestrator(hive.vault)
+        cfg = o.config()
+        for k in ("watch", "exclude"):
+            if isinstance(payload.get(k), list):
+                cfg[k] = [str(x) for x in payload[k] if str(x).strip()]
+        o._save("config", cfg)
+        return {k: v for k, v in cfg.items() if k != "salt"}
 
     @app.get("/api/audit")
     def audit(limit: int = 100):

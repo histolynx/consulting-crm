@@ -11,6 +11,7 @@ import { Invoices } from './views/invoices.js';
 import { Inbox } from './views/inbox.js';
 import { Ask } from './views/ask.js';
 import { Setup } from './views/setup.js';
+import { Orchestrator } from './views/orchestrator.js';
 
 const VIEWS = [
   { id: 'dashboard', label: 'Hive', icon: '⬢', C: Dashboard, key: '1' },
@@ -21,6 +22,7 @@ const VIEWS = [
   { id: 'invoices', label: 'Invoices', icon: '$', C: Invoices, key: '6' },
   { id: 'inbox', label: 'Inbox', icon: '✉', C: Inbox, key: '7' },
   { id: 'ask', label: 'Ask the Hive', icon: '✦', C: Ask, key: '8' },
+  { id: 'orchestrator', label: 'Orchestrator', icon: '◈', C: Orchestrator, key: '0' },
   { id: 'setup', label: 'Setup', icon: '⚙', C: Setup, key: '9' },
 ];
 
@@ -113,7 +115,7 @@ function App() {
     const key = (e) => {
       const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette((p) => !p); }
-      else if (e.altKey && /^[1-9]$/.test(e.key)) { const v = VIEWS.find((x) => x.key === e.key); if (v) go(v.id); }
+      else if (e.altKey && /^[0-9]$/.test(e.key)) { const v = VIEWS.find((x) => x.key === e.key); if (v) go(v.id); }
       else if (!typing && e.key === '/' && !document.querySelector('.overlay')) { e.preventDefault(); setPalette(true); }
     };
     addEventListener('keydown', key);

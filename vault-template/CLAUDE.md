@@ -21,6 +21,8 @@ It opens directly in Obsidian. Never break these rules:
 
 | type | folder | key fields |
 |---|---|---|
+| area | areas/ | one hub per area: Consulting, Committee of 100, Yale, MSU, Research, Career. Any note may carry `area: "[[Area]]"` (defaults to Consulting for business notes). Personal life is out of scope: never create notes about it |
+| imported note | library/<Area>/<Topic>/ | files the Orchestrator filed on the owner's approval: `area`, `topic`, `kind` (method/result/deliverable/reference/career/admin), `project`, `source`. Research methods go in Research; client results stay with the client project |
 | profile | `me.md` | name, business, email, phone, address, payment_instructions, invoice_prefix, default_terms_days |
 | client | clients/ | industry, website, status (prospect/active/past), aliases |
 | contact | contacts/ | name, org: "[[Client]]", role, email, phone, linkedin, relationship (champion/decision-maker/technical/referrer/other), last_contact, aliases |

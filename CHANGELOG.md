@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-29: v0.6.0, HIVE Orchestrator (phase 1)
+- `hive/orchestrator.py`: watches work folders (default Downloads + Desktop, depth 3), filters personal files by **name/folder only** (never read; stored only as salted hashes), classifies work files with the agent (text excerpts only; PDFs/Office by name) into **areas** (Consulting, Committee of 100, Yale, MSU, Research, Career), and queues **filing proposals**. Files move only on approve: copy by default, move on request; markdown becomes graph notes under `library/<Area>/<Topic>/`, other files go to `documents/` with a stub note.
+- Orchestrator page (cards, clickable questions, area/topic/project edits, bulk-file confident items, watched folders), Windows toast notifications (`hive/notify.py`, built-in WinRT), a 15-minute scheduled task, area hub notes, and schema rules.
+- Privacy: orchestrator agent runs write **no logs** (`private=True`); CLI output is counts only; earlier logs were redacted. A cross-process `orchestrate` lock stops overlapping runs. Fixed a CLI refactor that would have run `sync` twice. 83 tests.
+
 ## 2026-10-27: v0.5.2, one task, one home
 - Tasks are read only from home notes (contracts, projects, opportunities, contacts, clients, meetings, knowledge). Checkboxes in **briefings** and **email notes** are ignored: briefings restated every due task daily, and email notes duplicated the contract's task, which inflated 'Due within 7 days' (292 open, mostly copies).
 - The brief prompt writes plain bullets; the ingest prompt writes each checkbox task once, in its home note. 75 tests.

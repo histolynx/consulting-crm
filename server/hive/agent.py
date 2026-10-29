@@ -69,7 +69,9 @@ class Agent:
             cmd += ["--resume", session_id]
         return cmd
 
-    def stream(self, prompt: str, mode: str = "read", task: str = "ask", session_id: str | None = None) -> Iterator[dict[str, Any]]:
+    def stream(self, prompt: str, mode: str = "read", task: str = "ask", session_id: str | None = None,
+               private: bool = False) -> Iterator[dict[str, Any]]:
+        """private=True: write no run log (prompt/stream may contain file names from the owner's computer)."""
         """Yield simplified events: init, text, tool, result, error."""
         if mode not in ("read", "write"):
             raise ValueError("mode must be read or write")
@@ -79,7 +81,7 @@ class Agent:
         runs = self.vault.root / ".hive" / "agent-runs"
         runs.mkdir(parents=True, exist_ok=True)
         log_path = runs / f"{dt.datetime.now():%Y%m%d-%H%M%S}-{task}.jsonl"
-        self.vault.audit("agent", f"run-{task}", mode, log=log_path.name)
+        self.vault.audit("agent", f"run-{task}", mode, log="(private: not logged)" if private else log_path.name)
         try:
             cmd = self._cmd(mode, session_id)
             env = claude_env()
@@ -98,7 +100,7 @@ class Agent:
             proc.stdin.write(prompt)
             proc.stdin.close()
             got_result = False
-            with open(log_path, "w", encoding="utf-8") as log:
+            with (open(os.devnull, "w") if private else open(log_path, "w", encoding="utf-8")) as log:
                 log.write(json.dumps({"prompt": prompt, "mode": mode, "cmd": cmd[1:]}) + "\n")
                 for line in proc.stdout:
                     line = line.strip()
@@ -139,11 +141,11 @@ class Agent:
                    "cost": ev.get("total_cost_usd"), "duration_ms": ev.get("duration_ms"),
                    "turns": ev.get("num_turns"), "is_error": bool(ev.get("is_error"))}
 
-    def run(self, prompt: str, mode: str = "write", task: str = "job") -> dict[str, Any]:
+    def run(self, prompt: str, mode: str = "write", task: str = "job", private: bool = False) -> dict[str, Any]:
         """Blocking run for pipelines. Returns the final result/error event plus tool count."""
         tools = 0
         last: dict[str, Any] = {"kind": "error", "text": "no output"}
-        for ev in self.stream(prompt, mode=mode, task=task):
+        for ev in self.stream(prompt, mode=mode, task=task, private=private):
             if ev["kind"] == "tool":
                 tools += 1
             if ev["kind"] in ("result", "error"):
