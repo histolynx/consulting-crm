@@ -12,6 +12,7 @@ import { Inbox } from './views/inbox.js';
 import { Ask } from './views/ask.js';
 import { Setup } from './views/setup.js';
 import { Orchestrator } from './views/orchestrator.js';
+import { Ideas } from './views/ideas.js';
 
 const VIEWS = [
   { id: 'dashboard', label: 'Hive', icon: '⬢', C: Dashboard, key: '1' },
@@ -22,6 +23,7 @@ const VIEWS = [
   { id: 'invoices', label: 'Invoices', icon: '$', C: Invoices, key: '6' },
   { id: 'inbox', label: 'Inbox', icon: '✉', C: Inbox, key: '7' },
   { id: 'ask', label: 'Ask the Hive', icon: '✦', C: Ask, key: '8' },
+  { id: 'ideas', label: 'Ideas', icon: '✧', C: Ideas },
   { id: 'orchestrator', label: 'Orchestrator', icon: '◈', C: Orchestrator, key: '0' },
   { id: 'setup', label: 'Setup', icon: '⚙', C: Setup, key: '9' },
 ];
@@ -139,7 +141,7 @@ function App() {
     <div class="shell">
     <aside class="side">
       <div class="brand"><img class="logoimg" src="/icons/hive.svg" alt="" /><div title="Hub for Independent Venture Ecosystem"><b>HIVE</b><small>Hub for Independent<br />Venture Ecosystem</small></div></div>
-      ${VIEWS.map((v) => html`<div class=${'nav' + (v.id === view.id ? ' on' : '')} onClick=${() => go(v.id)} title=${`Alt+${v.key}`}>
+      ${VIEWS.map((v) => html`<div class=${'nav' + (v.id === view.id ? ' on' : '')} onClick=${() => go(v.id)} title=${v.key ? `Alt+${v.key}` : v.label}>
         <span class="ico">${v.icon}</span><span class="lbl">${v.label}</span></div>`)}
       <div class="spacer"></div>
       ${isDemo && html`<div class="chip amber" style="margin:0 8px 8px">DEMO VAULT</div>`}

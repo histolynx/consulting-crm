@@ -112,6 +112,7 @@ export const TYPE_COLORS = {
   profile: '#ffffff', client: '#f5a524', contact: '#5aa9e6', contract: '#4cc38a', opportunity: '#9be15d', area: '#ff8f5c', project: '#3cc6c0',
   meeting: '#e86fb0', email: '#a68cff', note: '#ffc85c', knowledge: '#ffc85c', invoice: '#d9822b',
   timelog: '#6b7280', briefing: '#c0c7d1', inbox: '#7c6bb0', draft: '#b08cff', tag: '#3a4452', ghost: '#4a4f58', system: '#5d6573',
+  act: '#8fb8de', legislator: '#ef5b5b', committee: '#c792ea', topic: '#8fd16a',
 };
 export const COMMUNITY = ['#f5a524', '#5aa9e6', '#4cc38a', '#e86fb0', '#a68cff', '#3cc6c0', '#ef5b5b', '#ffc85c', '#8fd16a', '#d9822b', '#6fa8ff', '#c792ea'];
 export const typeColor = (t) => TYPE_COLORS[t] || '#9aa3af';

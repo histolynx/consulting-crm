@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from hive.vault import Vault, extract_tasks, parse_note, render_note, slugify, split_frontmatter
@@ -64,3 +66,19 @@ def test_hidden_and_template_dirs_skipped(vault: Vault):
     vault.write("notes/real.md", {"type": "note"}, "")
     vault.write("CLAUDE.md", {"type": "system"}, 'org: "[[Client]]"')
     assert [n.path for n in vault.load_all()] == ["notes/real.md"]
+
+
+def test_load_all_rereads_only_changed_files(vault: Vault, monkeypatch):
+    vault.write("a.md", {"type": "note"}, "one")
+    vault.write("b.md", {"type": "note"}, "two")
+    first = {n.path: n for n in vault.load_all()}
+    vault.write("b.md", {"type": "note"}, "two, edited")
+    (vault.root / "a.md").rename(vault.root / "c.md")
+    reads = []
+    real = Path.read_text
+    monkeypatch.setattr(Path, "read_text", lambda self, *a, **k: reads.append(self.name) or real(self, *a, **k))
+    second = {n.path: n for n in vault.load_all()}
+    assert set(second) == {"b.md", "c.md"} and second["b.md"].body.strip() == "two, edited"
+    assert sorted(reads) == ["b.md", "c.md"]                 # unchanged files come from the cache
+    third = {n.path: n for n in vault.load_all()}
+    assert third["c.md"] is second["c.md"] and first["b.md"] is not third["b.md"]

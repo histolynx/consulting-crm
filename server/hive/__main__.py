@@ -1,4 +1,4 @@
-"""CLI:  python -m hive serve | sync | brief | fetch | gaps | init | orchestrate"""
+"""CLI:  python -m hive serve | sync | brief | fetch | gaps | init | orchestrate | acts | idea"""
 from __future__ import annotations
 
 import argparse
@@ -50,6 +50,17 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("orchestrate", help="scan watched folders, classify new work files, notify")
     sub.add_parser("fetch")
     sub.add_parser("gaps")
+    ac = sub.add_parser("acts", help="import parsed legislative acts (JSON) as a knowledge graph in the Ideas area")
+    ac.add_argument("parsed_dir", help="folder of per-act JSON files")
+    ac.add_argument("--pdf-dir", help="folder of ACT0001.pdf ... (default: <parsed_dir>/../raw_pdfs)")
+    ac.add_argument("--state", default="Arkansas")
+    ac.add_argument("--abbr", default="AR")
+    ac.add_argument("--year", type=int, default=2025)
+    ac.add_argument("--session", default="95th General Assembly, Regular Session 2025")
+    idp = sub.add_parser("idea", help="add an idea note to the Ideas area")
+    idp.add_argument("title")
+    idp.add_argument("--file", help="markdown file with the idea text (UTF-8); omit for a title-only idea")
+    idp.add_argument("--tags", default="", help="comma-separated, e.g. mcp,womens-health")
     a = ap.parse_args(argv)
 
     if a.cmd == "serve":
@@ -81,6 +92,19 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "fetch":
         from .mail import Mailbox
         out = Mailbox(vault).fetch_new()
+    elif a.cmd == "idea":
+        from pathlib import Path
+
+        from .ideas import add_idea
+        text = Path(a.file).read_text(encoding="utf-8") if a.file else ""
+        out = {"path": add_idea(vault, a.title, text, [t for t in a.tags.split(",") if t.strip()], actor="cli")}
+    elif a.cmd == "acts":
+        from pathlib import Path
+
+        from .acts import ActsImport
+        parsed = Path(a.parsed_dir)
+        pdfs = Path(a.pdf_dir) if a.pdf_dir else parsed.parent / "raw_pdfs"
+        out = ActsImport(vault, parsed, pdfs if pdfs.exists() else None, a.state, a.abbr, a.year, a.session).run(parsed.parent)
     else:
         from .graph import Graph
         from .timetrack import TimeTracker

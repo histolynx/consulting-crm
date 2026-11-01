@@ -176,6 +176,8 @@ class Vault:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
         (self.root / ".hive").mkdir(exist_ok=True)
+        # rel -> ((mtime, size), Note). Reads dominate load_all on Google Drive (~3 ms/file), so only changed files are re-read.
+        self._cache: dict[str, tuple[tuple[float, int], Note]] = {}
 
     # ---------- reading ----------
     def iter_files(self) -> Iterator[Path]:
@@ -188,10 +190,16 @@ class Vault:
             yield p
 
     def load_all(self) -> list[Note]:
-        notes = []
+        notes, cache = [], {}
         for p in self.iter_files():
             rel = p.relative_to(self.root).as_posix()
-            notes.append(parse_note(p.read_text(encoding="utf-8"), rel, p.stat().st_mtime))
+            st = p.stat()
+            key = (st.st_mtime, st.st_size)
+            hit = self._cache.get(rel)
+            note = hit[1] if hit and hit[0] == key else parse_note(p.read_text(encoding="utf-8"), rel, st.st_mtime)
+            cache[rel] = (key, note)
+            notes.append(note)
+        self._cache = cache  # drops deleted/renamed files
         return notes
 
     def read(self, rel: str) -> Note:

@@ -159,6 +159,7 @@ def to_note(parsed: dict[str, Any], uid: str, direction: str = "received") -> tu
         "type": "inbox", "status": "new", "uid": uid, "received": parsed["date"], "date": orig_date,
         "subject": subject, "from": orig_from, "forwarded": bool(fwd),
         "forwarded_by": f"{parsed['from_name']} <{parsed['from_email']}>" if fwd else None,
+        "wrapper_subject": parsed["subject"] if fwd else None,  # what the forwarder typed, e.g. "Idea: Fwd: ..."
         "to": fwd.get("to") if fwd else ", ".join(parsed["to"]), "cc": (fwd.get("cc") if fwd else ", ".join(parsed["cc"])) or None,
         "message_id": parsed["message_id"], "direction": direction,
         "tags": ["inbox"] if direction == "received" else ["inbox", "sent"],

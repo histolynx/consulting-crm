@@ -70,6 +70,7 @@ def test_failed_agent_run_fails_the_step(tmp_path, monkeypatch):
     (v.root / "inbox").mkdir(parents=True)
     (v.root / "inbox" / "a.md").write_text("---\ntype: inbox\nstatus: new\n---\nhi\n")
     monkeypatch.setattr(pipeline, "command_prompt", lambda *a: "prompt")
+    monkeypatch.setattr(pipeline, "gmail_login", lambda: None)
     monkeypatch.setattr(pipeline.Agent, "run", lambda self, *a, **k: {
         "kind": "error", "text": "Failed to authenticate: OAuth session expired", "tools": 0})
     report = pipeline.sync(v, fetch=False, push=False, gaps=False)

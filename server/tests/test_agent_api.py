@@ -74,6 +74,13 @@ def client(crm_vault):
 H = {"X-Hive": "1"}
 
 
+def test_app_code_is_revalidated(client):
+    # Heuristic caching kept an old main.js after updates; JS/CSS must always be rechecked
+    r = client.get("/js/main.js")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
+    assert client.get("/js/main.js", headers={"if-none-match": r.headers["etag"]}).status_code == 304
+
+
 def test_guard_requires_header_and_local_host(client):
     assert client.post("/api/time", json={"minutes": 5}).status_code == 403
     assert client.get("/api/health", headers={"host": "evil.example"}).status_code == 403

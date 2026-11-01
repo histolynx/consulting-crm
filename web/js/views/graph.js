@@ -2,8 +2,11 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html, api, openNote, toast, refreshAll, go, typeColor, TYPE_COLORS, COMMUNITY } from '../lib.js';
 
-const HIDEABLE = ['email', 'timelog', 'inbox', 'invoice', 'meeting', 'briefing', 'draft', 'ghost', 'system'];
+// Imported idea datasets (e.g. 1,000+ legislative acts): hidden in the full graph so they don't swamp the CRM, shown in a Lens.
+const IDEA_TYPES = ['act', 'legislator', 'committee', 'topic'];
+const HIDEABLE = ['email', 'timelog', 'inbox', 'invoice', 'meeting', 'briefing', 'draft', 'ghost', 'system', ...IDEA_TYPES];
 const DEFAULT_HIDE = ['timelog', 'inbox', 'system', 'briefing'];
+const defaultHide = (root) => (root ? DEFAULT_HIDE : [...DEFAULT_HIDE, ...IDEA_TYPES]);
 
 let load3d;
 function ensure3d() {
@@ -43,7 +46,7 @@ export function GraphView({ params, tick }) {
   const [mode, setMode] = useState('2d');
   const [colorBy, setColorBy] = useState('type');
   const [tags, setTags] = useState(false);
-  const [hide, setHide] = useState(DEFAULT_HIDE);
+  const [hide, setHide] = useState(() => defaultHide(params.root));
   const [depth, setDepth] = useState(Number(params.depth || 2));
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -53,6 +56,8 @@ export function GraphView({ params, tick }) {
   const root = params.root || null;
   const colorByRef = useRef(colorBy);
   colorByRef.current = colorBy;
+  const firstRoot = useRef(true);
+  useEffect(() => { if (firstRoot.current) { firstRoot.current = false; return; } setHide(defaultHide(root)); }, [root]);
 
   // ---- data
   useEffect(() => {

@@ -21,7 +21,7 @@ from typing import Any
 from .graph import Graph
 from .vault import Vault, slugify, split_frontmatter
 
-AREAS = ["Consulting", "Committee of 100", "Yale", "MSU", "Research", "Career"]
+AREAS = ["Consulting", "Committee of 100", "Yale", "MSU", "Research", "Career", "Ideas"]
 WORK_EXT = {".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".ipynb", ".py", ".r", ".rmd", ".qmd", ".json",
             ".yaml", ".yml", ".sh", ".tex", ".bib"}
 TEXT_EXT = {".md", ".txt", ".csv", ".ipynb", ".py", ".r", ".rmd", ".qmd", ".json", ".yaml", ".yml", ".sh", ".tex", ".bib"}
@@ -138,7 +138,8 @@ class Orchestrator:
             "Classify each file the owner's computer produced into the HIVE knowledge graph. Areas: " + ", ".join(AREAS) + ".\n"
             "Rules: methods/reusable technical knowledge go to the Research area under a topic; client deliverables, data and results "
             "stay with the client's project in Consulting. Job-search material (resumes, cover letters, applications) is Career. "
-            "Committee of 100, Yale and MSU are volunteer areas. If a file looks personal (health, family, finances), set area to "
+            "Committee of 100, Yale and MSU are volunteer areas. Ideas holds side-project ideas and datasets the owner is "
+            "exploring, not tied to a client. If a file looks personal (health, family, finances), set area to "
             "'personal' and say nothing else about it. If unsure, set confidence below 0.6 and add a question with 2-4 options.\n"
             f"Existing homes (contracts/projects/opportunities): {json.dumps(homes)}\n"
             f"Files: {json.dumps(items)}\n"
@@ -290,7 +291,8 @@ def ensure_area_hubs(vault: Vault) -> list[str]:
     blurbs = {"Consulting": "Client consulting work: contracts, projects, deliverables.",
               "Committee of 100": "Volunteer work with the Committee of 100.", "Yale": "Volunteer work with Yale.",
               "MSU": "Volunteer work with MSU.", "Research": "Reusable methods and knowledge, e.g. genomics pipelines.",
-              "Career": "Job search: applications, resumes, cover letters, interviews."}
+              "Career": "Job search: applications, resumes, cover letters, interviews.",
+              "Ideas": "Side-project ideas and datasets worth exploring, with where their files live."}
     for a in AREAS:
         rel = f"areas/{a}.md"
         if not (vault.root / rel).exists():

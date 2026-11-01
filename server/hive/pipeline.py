@@ -16,7 +16,9 @@ from typing import Any
 
 from . import crm
 from .agent import Agent, command_prompt
+from .config import gmail_login
 from .graph import Graph
+from .ideas import owner_addresses, route_idea_emails
 from .mail import Mailbox
 from .timetrack import TimeTracker
 from .vault import Vault
@@ -143,6 +145,7 @@ def _sync(vault: Vault, fetch: bool, ingest: bool, push: bool, gaps: bool) -> di
     mb = Mailbox(vault)
     if fetch:
         step("fetch", mb.fetch_new)
+    step("ideas", lambda: route_idea_emails(vault, owner_addresses(vault, [(gmail_login() or [None])[0]])))
     if ingest:
         new = [p for p in (vault.root / "inbox").glob("*.md") if vault.read(p.relative_to(vault.root).as_posix()).meta.get("status") == "new"]
         if new:

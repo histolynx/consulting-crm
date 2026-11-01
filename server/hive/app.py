@@ -23,6 +23,7 @@ from .agent import Agent, claude_available
 from . import creds
 from .config import SECRETS_FILE, claude_account, gmail_login, load_settings, read_secrets
 from .graph import Graph
+from .ideas import add_idea, ideas as list_ideas
 from .mail import LoginFailed, Mailbox, imap_login
 from .cleanup import Cleanup
 from .orchestrator import Orchestrator
@@ -87,6 +88,16 @@ class Hive:
 
         threading.Thread(target=target, daemon=True).start()
         return job
+
+
+class Revalidate(StaticFiles):
+    """App code the browser must recheck on every load (cheap ETag 304s). Without a Cache-Control header,
+    browsers cache by file age, so a weeks-old main.js stayed "fresh" for days after an update."""
+
+    def file_response(self, *args, **kwargs):
+        resp = super().file_response(*args, **kwargs)
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
 
 
 def create_app(vault_root: Path | None = None) -> FastAPI:
@@ -313,6 +324,19 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
     @app.get("/api/clients")
     def clients():
         return crm.clients(hive.graph())
+
+    @app.get("/api/ideas")
+    def ideas():
+        return list_ideas(hive.graph())
+
+    @app.post("/api/idea")
+    def idea(payload: dict = Body(...)):
+        try:
+            rel = add_idea(hive.vault, payload.get("title") or "", payload.get("text") or "", payload.get("tags") or [])
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        hive.invalidate()
+        return {"path": rel}
 
     @app.get("/api/contracts")
     def contracts():
@@ -686,8 +710,8 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
 
     web = settings.web
     app.mount("/vendor", StaticFiles(directory=web / "vendor"), name="vendor")
-    app.mount("/js", StaticFiles(directory=web / "js"), name="js")
-    app.mount("/css", StaticFiles(directory=web / "css"), name="css")
+    app.mount("/js", Revalidate(directory=web / "js"), name="js")
+    app.mount("/css", Revalidate(directory=web / "css"), name="css")
     app.mount("/icons", StaticFiles(directory=web / "icons"), name="icons")
 
     @app.get("/manifest.webmanifest")
