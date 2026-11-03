@@ -49,8 +49,19 @@ def test_agent_real_cmd_scopes_tools(monkeypatch, crm_vault):
     assert read[read.index("--allowedTools") + 1] == "Read,Glob,Grep"
     assert "--permission-mode" not in read
     assert write[write.index("--allowedTools") + 1] == "Read,Glob,Grep,Write,Edit"
-    assert "Bash" in write[write.index("--disallowedTools") + 1]
+    assert {"Bash", "Agent", "Task"} <= set(write[write.index("--disallowedTools") + 1].split(","))
     assert write[write.index("--resume") + 1] == "abc"
+
+
+def test_agent_cmd_sandboxes_control_files(monkeypatch, crm_vault):
+    """A prompt-injected email must not be able to rewrite the agent's own rules, hooks or MCP config."""
+    monkeypatch.setattr(agent_mod, "find_claude", lambda: Path("claude"))
+    for mode in ("read", "write"):
+        cmd = Agent(crm_vault)._cmd(mode, None)
+        assert "--strict-mcp-config" in cmd
+        deny = set(json.loads(cmd[cmd.index("--settings") + 1])["permissions"]["deny"])
+        for p in (".claude/**", ".git/**", ".hive/**", ".obsidian/**", ".mcp.json", "CLAUDE.md"):
+            assert {f"Edit(./{p})", f"Write(./{p})"} <= deny
 
 
 def test_agent_missing_binary_is_an_error_event(monkeypatch, crm_vault):

@@ -6,6 +6,8 @@
 
 Mailbox is opened read-only: HIVE never marks mail as read, moves or deletes it.
 Credentials: HIVE_GMAIL_USER / HIVE_GMAIL_APP_PASSWORD in ~/.hive/secrets.env.
+TLS: the server certificate IS verified. The stdlib default for IMAP4_SSL is not to (CERT_NONE, no hostname
+check), which would hand the app password to anything answering at imap.gmail.com on a hostile network.
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ import email.policy
 import html
 import imaplib
 import re
+import ssl
 import time
 from email.message import EmailMessage
 from email.utils import getaddresses, parseaddr, parsedate_to_datetime
@@ -32,7 +35,11 @@ class LoginFailed(RuntimeError):
 def imap_login(user: str, password: str, timeout: float = 20) -> imaplib.IMAP4_SSL:
     """Open an authenticated IMAP session. Raises LoginFailed with a human-readable reason."""
     try:
-        imap = imaplib.IMAP4_SSL(IMAP_HOST, timeout=timeout)
+        imap = imaplib.IMAP4_SSL(IMAP_HOST, timeout=timeout, ssl_context=ssl.create_default_context())
+    except ssl.SSLCertVerificationError as e:
+        reason = getattr(e, "verify_message", None) or str(e)  # verify_message is set by real handshakes only
+        raise LoginFailed(f"Gmail's TLS certificate didn't verify ({reason}). Something on this network may be "
+                          "intercepting the connection; HIVE did not send the password.") from e
     except OSError as e:
         raise LoginFailed(f"Can't reach Gmail ({e}). Check your internet connection.") from e
     try:

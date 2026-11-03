@@ -75,7 +75,11 @@ e.g. the account tied to the hive mailbox. Your interactive Claude Code keeps it
 
 ## Security and supply chain
 * Server binds to 127.0.0.1; mutating requests need an `X-Hive` header (blocks cross-site requests) and a local Host header (blocks DNS rebinding).
-* The agent runs with **scoped tools**: read = Read/Glob/Grep; write adds Write/Edit. Bash, web and MCP are always denied. Claude never sees mail credentials.
+* The agent runs with **scoped tools**: read = Read/Glob/Grep; write adds Write/Edit. Bash, web, subagents and MCP are always denied
+  (`--strict-mcp-config`: no MCP server loads, whatever the vault contains). Permission **deny rules** stop it writing the files that
+  decide what runs next (`.claude/` hooks and command prompts, `CLAUDE.md`, `.mcp.json`, `.git/`, `.hive/`, `.obsidian/`), so a
+  prompt-injected email can't change what the agent is. Claude never sees mail credentials.
+* IMAP to Gmail **verifies the server certificate** (Python's `IMAP4_SSL` default does not).
 * Every write is appended to `vault/.hive/audit.jsonl`, every agent run is logged to `vault/.hive/agent-runs/`, and every sync or chat edit is a git commit (undo with git).
 * Python deps: exact pins, only releases ≥ 14 days old, hash-locked (`scripts/lock-python.ps1`). JS deps: vendored without npm,
   each tarball verified against the registry's SHA-512 integrity and pinned in `web/vendor/vendor.lock.json` (`scripts/vendor.py`).

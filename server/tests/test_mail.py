@@ -121,3 +121,33 @@ def test_fetch_reads_inbox_and_sent_without_uid_collisions(vault, monkeypatch):
 
 def test_html_to_text_strips_scripts():
     assert html_to_text("<style>x{}</style><ul><li>a</li><li>b</li></ul>") == "- a\n- b"
+
+
+def test_imap_login_verifies_the_server_certificate(monkeypatch):
+    """IMAP4_SSL's stdlib default is CERT_NONE + no hostname check: the app password would go to any impostor."""
+    import ssl
+
+    import pytest
+
+    from hive import mail as mail_mod
+    seen = {}
+
+    class FakeImap:
+        def __init__(self, host, timeout=None, ssl_context=None):
+            seen["ctx"] = ssl_context
+            if host == "mitm":
+                raise ssl.SSLCertVerificationError(1, "certificate verify failed: self-signed certificate")
+
+        def login(self, user, pw):
+            seen["login"] = (user, pw)
+
+    monkeypatch.setattr(mail_mod.imaplib, "IMAP4_SSL", FakeImap)
+    mail_mod.imap_login("me@x.test", "abcd efgh")
+    assert seen["ctx"].verify_mode == ssl.CERT_REQUIRED and seen["ctx"].check_hostname
+    assert seen["login"] == ("me@x.test", "abcdefgh")
+
+    seen.clear()
+    monkeypatch.setattr(mail_mod, "IMAP_HOST", "mitm")
+    with pytest.raises(mail_mod.LoginFailed, match="certificate didn't verify"):
+        mail_mod.imap_login("me@x.test", "abcd efgh")
+    assert "login" not in seen  # the password never left the machine

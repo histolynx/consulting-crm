@@ -4,6 +4,11 @@ Tool scopes (Bash, web and MCP are always denied; the agent never sees credentia
   read   -> Read, Glob, Grep                     ("Ask the Hive")
   write  -> + Write, Edit                        (chat with edit permission, ingestion, briefings)
 
+Sandbox (enforced by Claude Code's permission rules, not by the prompt): the agent reads untrusted mail, so a
+prompt-injected message must not be able to change what the agent IS. Writes to the vault's control files are
+denied (.claude/ incl. hooks and command prompts, CLAUDE.md, .mcp.json, .git/ hooks, .hive/ state and audit log,
+.obsidian/ plugins), and no MCP server is loaded whatever the vault contains (--strict-mcp-config).
+
 Every run is logged to vault/.hive/agent-runs/<timestamp>-<task>.jsonl and the audit log.
 """
 from __future__ import annotations
@@ -21,7 +26,15 @@ from .vault import Vault, split_frontmatter
 
 READ_TOOLS = ["Read", "Glob", "Grep"]
 WRITE_TOOLS = READ_TOOLS + ["Write", "Edit"]
-DENY_TOOLS = ["Bash", "WebFetch", "WebSearch", "NotebookEdit", "Task"]
+DENY_TOOLS = ["Bash", "WebFetch", "WebSearch", "NotebookEdit", "Task", "Agent"]
+# Paths (relative to the vault = cwd) the agent may read but never write: the files that decide what runs next.
+PROTECTED = [".claude/**", ".git/**", ".hive/**", ".obsidian/**", ".mcp.json", "CLAUDE.md"]
+
+
+def sandbox_settings() -> str:
+    """`--settings` JSON. Deny rules win over --allowedTools and acceptEdits, whatever the model is told."""
+    deny = [f"{tool}(./{p})" for p in PROTECTED for tool in ("Edit", "Write")]
+    return json.dumps({"permissions": {"deny": deny}})
 
 SYSTEM = (
     "You are HIVE, the knowledge-graph agent for a solo AI/data consulting practice. The current working "
@@ -62,6 +75,7 @@ class Agent:
         tools = WRITE_TOOLS if mode == "write" else READ_TOOLS
         cmd = [str(find_claude()), "-p", "--output-format", "stream-json", "--verbose",
                "--allowedTools", ",".join(tools), "--disallowedTools", ",".join(DENY_TOOLS),
+               "--strict-mcp-config", "--settings", sandbox_settings(),
                "--append-system-prompt", SYSTEM.format(today=dt.date.today().isoformat())]
         if mode == "write":
             cmd += ["--permission-mode", "acceptEdits"]
