@@ -151,3 +151,27 @@ def test_imap_login_verifies_the_server_certificate(monkeypatch):
     with pytest.raises(mail_mod.LoginFailed, match="certificate didn't verify"):
         mail_mod.imap_login("me@x.test", "abcd efgh")
     assert "login" not in seen  # the password never left the machine
+
+
+def test_one_unreadable_message_is_quarantined_not_blocking(vault, monkeypatch):
+    """Before: an exception on one message left last_uid behind it, so every hourly fetch died on the same message."""
+    from hive import mail as mail_mod
+    bad, good = _msg("poison"), _msg("fine")
+    real = mail_mod.parse_message
+
+    def flaky(raw):
+        if b"poison" in raw:
+            raise LookupError("unknown encoding: x-mac-martian")
+        return real(raw)
+    monkeypatch.setattr(mail_mod, "parse_message", flaky)
+    fake = _FakeImap({"INBOX": {1: bad, 2: good}, '"[Gmail]/Sent Mail"': {}})
+    monkeypatch.setattr(mail_mod.Mailbox, "_connect", lambda self: fake)
+    written = mail_mod.Mailbox(vault).fetch_new()
+    assert len(written) == 2 and vault.state("mail")["last_uid"] == 2
+    stub = vault.read([w for w in written if "(1).md" in w][0])
+    assert stub.meta["status"] == "failed" and "x-mac-martian" in stub.meta["error"]
+    assert (vault.root / stub.meta["raw"]).read_bytes() == bad  # nothing lost
+    assert vault.read([w for w in written if "(2).md" in w][0]).meta["status"] == "new"  # the next one got through
+    assert mail_mod.Mailbox(vault).fetch_new() == []  # and the bad one isn't retried forever
+    assert mail_mod.Mailbox(vault).status()["inbox_failed"] == 1
+    assert any(a["action"] == "fetch-failed" for a in vault.read_audit(10))

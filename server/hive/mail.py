@@ -224,32 +224,56 @@ class Mailbox:
             uids = [int(u) for u in (data[0] or b"").split()]
             uids = sorted(u for u in uids if u > int(state.get("last_uid", 0)))[:limit]
             for uid in uids:
-                typ, msgdata = imap.uid("FETCH", str(uid), "(BODY.PEEK[])")
+                typ, msgdata = imap.uid("FETCH", str(uid), "(BODY.PEEK[])")  # transport errors propagate: retried next run
                 raw = next((x[1] for x in msgdata if isinstance(x, tuple)), None)
                 if not raw:
                     continue
-                parsed = parse_message(raw)
                 label = f"{prefix}{uid}"
-                rel, meta, body = to_note(parsed, label, direction)
-                if parsed["attachments"]:
-                    links, saved = [], []
-                    for name, blob in parsed["attachments"]:
-                        safe = re.sub(r'[\\/:*?"<>|]', "_", name)
-                        p = self.vault.root / "attachments" / label / safe
-                        p.parent.mkdir(parents=True, exist_ok=True)
-                        p.write_bytes(blob)
-                        saved.append(f"attachments/{label}/{safe}")
-                        links.append(f"- [{safe}](../attachments/{label}/{safe.replace(' ', '%20')})")
-                    meta["attachments"] = saved
-                    body += "\n## Attachments\n" + "\n".join(links) + "\n"
-                self.vault.write(rel, meta, body, actor="mail", action=f"fetch-{direction}")
-                written.append(rel)
+                try:
+                    written.append(self._store_message(raw, label, direction))
+                except Exception as e:  # noqa: BLE001 - one unreadable message must not block every newer one, every hour
+                    written.append(self._quarantine(raw, label, direction, e))
                 state["last_uid"] = uid
                 self.vault.set_state(key, state)  # checkpoint after every message
         finally:
             state["last_fetch"] = dt.datetime.now().isoformat(timespec="seconds")
             self.vault.set_state(key, state)
         return written
+
+    def _store_message(self, raw: bytes, label: str, direction: str) -> str:
+        parsed = parse_message(raw)
+        rel, meta, body = to_note(parsed, label, direction)
+        if parsed["attachments"]:
+            links, saved = [], []
+            for name, blob in parsed["attachments"]:
+                safe = re.sub(r'[\\/:*?"<>|]', "_", name)
+                p = self.vault.root / "attachments" / label / safe
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_bytes(blob)
+                saved.append(f"attachments/{label}/{safe}")
+                links.append(f"- [{safe}](../attachments/{label}/{safe.replace(' ', '%20')})")
+            meta["attachments"] = saved
+            body += "\n## Attachments\n" + "\n".join(links) + "\n"
+        self.vault.write(rel, meta, body, actor="mail", action=f"fetch-{direction}")
+        return rel
+
+    def _quarantine(self, raw: bytes, label: str, direction: str, err: Exception) -> str:
+        """A message HIVE can't parse or store (odd charset, a filename Windows refuses...): keep the raw bytes, leave
+        a visible `status: failed` inbox note the ingest agent skips, and let the checkpoint move past it."""
+        rawrel = f"attachments/{label}/message.eml"
+        p = self.vault.root / rawrel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(raw)
+        today = dt.date.today().isoformat()
+        error = f"{type(err).__name__}: {err}"[:300]
+        rel = f"inbox/{today} unreadable message ({label}).md"
+        meta = {"type": "inbox", "status": "failed", "uid": label, "date": today, "direction": direction,
+                "error": error, "raw": rawrel, "tags": ["inbox", "failed"]}
+        body = (f"# Unreadable message ({label})\n\nHIVE could not parse or store this email: `{error}`\n\n"
+                f"The raw message is kept at `{rawrel}`.\n")
+        self.vault.write(rel, meta, body, actor="mail", action="fetch-failed")
+        self.vault.audit("mail", "fetch-failed", label, error=error)
+        return rel
 
     def pending_drafts(self) -> list[str]:
         out = []
@@ -297,15 +321,17 @@ class Mailbox:
 
     def status(self) -> dict[str, Any]:
         inbox = self.vault.root / "inbox"
-        new = processed = 0
+        new = processed = failed = 0
         for p in inbox.glob("*.md"):
-            n = self.vault.read(p.relative_to(self.vault.root).as_posix())
-            if n.meta.get("status") == "new":
+            st = self.vault.read(p.relative_to(self.vault.root).as_posix()).meta.get("status")
+            if st == "new":
                 new += 1
+            elif st == "failed":
+                failed += 1
             else:
                 processed += 1
         return {"state": self.vault.state("mail", {}), "inbox_new": new, "inbox_processed": processed,
-                "drafts_ready": len(self.pending_drafts())}
+                "inbox_failed": failed, "drafts_ready": len(self.pending_drafts())}
 
 
 def attachment_path(vault: Vault, rel: str) -> Path:

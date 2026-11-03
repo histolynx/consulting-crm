@@ -90,6 +90,8 @@ def test_app_code_is_revalidated(client):
     r = client.get("/js/main.js")
     assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
     assert client.get("/js/main.js", headers={"if-none-match": r.headers["etag"]}).status_code == 304
+    v = client.get("/vendor/purify.mjs")  # vendored libs too: a security bump must reach the browser on next load
+    assert v.status_code == 200 and v.headers["cache-control"] == "no-cache"
 
 
 def test_guard_requires_header_and_local_host(client):

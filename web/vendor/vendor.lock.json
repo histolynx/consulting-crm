@@ -41,5 +41,33 @@
     "files": [
       "purify.mjs"
     ]
+  },
+  "force-graph@1.51.5": {
+    "integrity": "sha512-MvpxTSIOKyTYZz7XPVGGCSb9VePhyIvmCiDyPswjsiTZKlWDfFL0FDqyduWTLPk/UdOnulQESNGxTbWH0yM2cA==",
+    "released": "2026-09-27T22:28:49.608Z",
+    "files": [
+      "force-graph.min.js"
+    ]
+  },
+  "3d-force-graph@1.80.1": {
+    "integrity": "sha512-8+JcH/K1MkVncxthCVg1vdNY49PSUY7gPMlFzBHJD91AmofqqxZNnVo5RfY61BShwZk6koqyYK7f5hp+NT6utQ==",
+    "released": "2026-09-29T22:42:33.474Z",
+    "files": [
+      "3d-force-graph.min.js"
+    ]
+  },
+  "marked@18.1.1": {
+    "integrity": "sha512-zEGgrtUG8crk+TrMacJSVABU4DYDDkS8uqgU3ohrn/2fW9C2AEfUrO3m6IhpIpQpl7YcVpiXXC9cSMWDANT3dg==",
+    "released": "2026-10-12T12:29:51.405Z",
+    "files": [
+      "marked.mjs"
+    ]
+  },
+  "dompurify@3.4.17": {
+    "integrity": "sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==",
+    "released": "2026-10-12T12:41:28.880Z",
+    "files": [
+      "purify.mjs"
+    ]
   }
 }

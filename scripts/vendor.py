@@ -28,10 +28,10 @@ LOCK = VENDOR / "vendor.lock.json"
 PACKAGES = [
     ("preact", "10.29.8", {"dist/preact.module.js": "preact.mjs", "hooks/dist/hooks.module.js": "preact-hooks.mjs"}),
     ("htm", "3.1.1", {"dist/htm.module.js": "htm.mjs"}),
-    ("force-graph", "1.51.4", {"dist/force-graph.min.js": "force-graph.min.js"}),
-    ("3d-force-graph", "1.80.0", {"dist/3d-force-graph.min.js": "3d-force-graph.min.js"}),
-    ("marked", "18.0.11", {"lib/marked.esm.js": "marked.mjs"}),
-    ("dompurify", "3.4.14", {"dist/purify.es.mjs": "purify.mjs"}),
+    ("force-graph", "1.51.5", {"dist/force-graph.min.js": "force-graph.min.js"}),
+    ("3d-force-graph", "1.80.1", {"dist/3d-force-graph.min.js": "3d-force-graph.min.js"}),
+    ("marked", "18.1.1", {"lib/marked.esm.js": "marked.mjs"}),
+    ("dompurify", "3.4.17", {"dist/purify.es.mjs": "purify.mjs"}),
 ]
 
 

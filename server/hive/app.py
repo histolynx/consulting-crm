@@ -709,7 +709,7 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
         return FileResponse(p)
 
     web = settings.web
-    app.mount("/vendor", StaticFiles(directory=web / "vendor"), name="vendor")
+    app.mount("/vendor", Revalidate(directory=web / "vendor"), name="vendor")  # a bumped DOMPurify must not stay cached
     app.mount("/js", Revalidate(directory=web / "js"), name="js")
     app.mount("/css", Revalidate(directory=web / "css"), name="css")
     app.mount("/icons", StaticFiles(directory=web / "icons"), name="icons")

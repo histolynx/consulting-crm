@@ -2,6 +2,8 @@
 
 Reads client/contact/contract/project/profile note titles and aliases from vault/ at run time (so the names
 themselves never live in this repo) and scans the staged content for them. Exit 1 lists the hits.
+Third-party code under web/vendor/ is skipped: it is hash-verified against the npm registry (scripts/vendor.py),
+so a private name can't get in by accident, and licence headers inside minified libraries trip the word match.
 Install (local only):  python scripts/check_no_client_data.py --install
 """
 from __future__ import annotations
@@ -19,6 +21,7 @@ from hive.vault import Vault  # noqa: E402
 SENSITIVE_TYPES = {"client", "contact", "contract", "project", "profile"}
 MIN_LEN = 4
 IGNORE = {"me", "your name", "your business name"}
+SKIP_PREFIXES = ("vault/", "web/vendor/")  # private repo; verified third-party code
 
 
 def sensitive_terms() -> set[str]:
@@ -42,7 +45,7 @@ def sensitive_terms() -> set[str]:
 def staged_files() -> list[str]:
     out = subprocess.run(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], cwd=ROOT,
                          capture_output=True, text=True, check=True).stdout
-    return [f for f in out.splitlines() if f and not f.startswith("vault/")]
+    return [f for f in out.splitlines() if f and not f.startswith(SKIP_PREFIXES)]
 
 
 def main() -> int:
