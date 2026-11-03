@@ -75,7 +75,7 @@ def test_api_connect_verifies_then_stores(fake_store, crm_vault, monkeypatch):
             raise LoginFailed("Gmail rejected the login.")
         return _FakeImap()
     monkeypatch.setattr(app_mod, "imap_login", fake_login)
-    c = TestClient(create_app(crm_vault.root))
+    c = TestClient(create_app(crm_vault.root, allow_hosts=("testserver",)))
 
     bad = c.post("/api/gmail", json={"user": "h@x.test", "password": "nope"}, headers=H)
     assert bad.status_code == 400 and "rejected" in bad.json()["detail"]

@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 import sys
 from pathlib import Path
@@ -79,7 +80,7 @@ def test_agent_missing_binary_is_an_error_event(monkeypatch, crm_vault):
 
 @pytest.fixture
 def client(crm_vault):
-    return TestClient(create_app(crm_vault.root))
+    return TestClient(create_app(crm_vault.root, allow_hosts=("testserver",)))
 
 
 H = {"X-Hive": "1"}
@@ -94,10 +95,22 @@ def test_app_code_is_revalidated(client):
     assert v.status_code == 200 and v.headers["cache-control"] == "no-cache"
 
 
-def test_guard_requires_header_and_local_host(client):
+def test_guard_requires_header_and_local_host(client, crm_vault):
     assert client.post("/api/time", json={"minutes": 5}).status_code == 403
     assert client.get("/api/health", headers={"host": "evil.example"}).status_code == 403
     assert client.get("/api/health").status_code == 200
+    # the production app has no test-host exception: TestClient's default Host is refused like any other
+    assert TestClient(create_app(vault_root=crm_vault.root)).get("/api/health").status_code == 403
+
+
+def test_dashboard_flags_a_stale_sync(client, crm_vault):
+    d = client.get("/api/dashboard").json()
+    assert d["sync_age_hours"] is None and d["sync_stale"] is False
+    old = (dt.datetime.now() - dt.timedelta(hours=5)).isoformat(timespec="seconds")
+    crm_vault.set_state("last_sync", {"finished": old, "steps": []})
+    d = client.get("/api/dashboard").json()
+    assert d["sync_stale"] is True and 4.5 < d["sync_age_hours"] < 5.5
+    assert client.get("/api/health").json()["version"] == __import__("hive").__version__
 
 
 def test_graph_and_note_endpoints(client):

@@ -82,3 +82,10 @@ def test_load_all_rereads_only_changed_files(vault: Vault, monkeypatch):
     assert sorted(reads) == ["b.md", "c.md"]                 # unchanged files come from the cache
     third = {n.path: n for n in vault.load_all()}
     assert third["c.md"] is second["c.md"] and first["b.md"] is not third["b.md"]
+
+
+def test_writes_are_atomic_and_leave_no_temp_files(vault):
+    n = vault.write("knowledge/A.md", {"type": "note"}, "# A\nbody\n")
+    vault.set_state("timer", {"x": 1})
+    assert n.body.startswith("# A") and vault.state("timer") == {"x": 1}
+    assert not list(vault.root.rglob("*.tmp"))

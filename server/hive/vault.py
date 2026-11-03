@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -171,6 +172,13 @@ def slugify(title: str) -> str:
     return re.sub(r"\s+", " ", s)[:120] or "untitled"
 
 
+def _atomic_write_text(p: Path, text: str) -> None:
+    """Sibling temp file + os.replace: a crash or a Drive hiccup mid-write never leaves a truncated note or state file."""
+    tmp = p.with_name(p.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, p)
+
+
 class Vault:
     def __init__(self, root: Path):
         self.root = root
@@ -216,14 +224,14 @@ class Vault:
     def write(self, rel: str, meta: dict[str, Any], body: str, actor: str = "ui", action: str = "write") -> Note:
         p = self.safe_path(rel)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(render_note(meta, body), encoding="utf-8")
+        _atomic_write_text(p, render_note(meta, body))
         self.audit(actor, action, rel)
         return self.read(rel)
 
     def write_raw(self, rel: str, text: str, actor: str = "ui") -> Note:
         p = self.safe_path(rel)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text, encoding="utf-8")
+        _atomic_write_text(p, text)
         self.audit(actor, "write", rel)
         return self.read(rel)
 
@@ -255,4 +263,4 @@ class Vault:
         return json.loads(f.read_text(encoding="utf-8")) if f.exists() else default
 
     def set_state(self, name: str, value: Any) -> None:
-        (self.root / ".hive" / f"{name}.json").write_text(json.dumps(value, indent=2), encoding="utf-8")
+        _atomic_write_text(self.root / ".hive" / f"{name}.json", json.dumps(value, indent=2))  # mail.json is the fetch checkpoint

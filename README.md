@@ -2,6 +2,8 @@
 
 A knowledge-graph CRM for independent consultants.
 
+![tests](https://github.com/histolynx/consulting-crm/actions/workflows/tests.yml/badge.svg)
+
 HIVE is a local-first "hive mind" for running a consulting business: **CRM, contracts pipeline, time tracking,
 invoicing and a knowledge graph**, all stored as plain **Obsidian-compatible markdown**. **Claude Code** runs as its
 agent: it reads your forwarded email, builds the graph, drafts replies, and answers questions about everything.
@@ -60,6 +62,8 @@ e.g. the account tied to the hive mailbox. Your interactive Claude Code keeps it
 | **Inbox** | Full pipeline: fetch → Claude ingest → push reply drafts → time gaps → git commit, with a per-step report |
 | **Ask the Hive** | Streaming chat with Claude Code over the vault; read-only by default, "Can edit" mode commits changes to git |
 | **Ctrl+K** | Command palette: search every note, create entities, run jobs |
+| **Orchestrator** | Watches work folders (Downloads, Desktop) for new work files, filters personal files by **name only** (never read), classifies the rest with the agent into areas (Consulting, volunteer orgs, Research, Career, Ideas) and proposes where each belongs; nothing moves without your approval. **Clean up a folder**: a plan you tick, applied by a script, undoable |
+| **Ideas** | Side-project ideas and datasets: quick-add, email capture (`Idea: ...` from your own address), a `/idea` Claude Code skill, and imported knowledge graphs explored as graph lenses (e.g. a legislative session: `python -m hive acts`) |
 
 ## Gmail setup (about 2 min, no Google Cloud project)
 1. On `your-hive-inbox@gmail.com`: enable 2-Step Verification → create an **App password** (myaccount.google.com/apppasswords).
@@ -71,7 +75,10 @@ e.g. the account tied to the hive mailbox. Your interactive Claude Code keeps it
 4. Forward client mail from your personal account. HIVE unwraps Gmail/Outlook forwards so the **original sender** is recorded.
 
 ## Automation
-`scripts\install-schedule.ps1` registers **HIVE Sync** (hourly) and **HIVE Brief** (07:30) Windows tasks; `-Remove` deletes them.
+`scripts\install-schedule.ps1` registers **HIVE Sync** (hourly), **HIVE Orchestrator** (every 15 min) and **HIVE Brief** (07:30)
+Windows tasks; `-Remove` deletes them. The tasks store this folder's absolute path, so re-run both install scripts after moving the repo.
+`python -m hive doctor` checks the venv, the Claude login, Gmail, the last sync's age and that every task still points here;
+the dashboard warns when no sync has run for 3 hours.
 
 ## Security and supply chain
 * Server binds to 127.0.0.1; mutating requests need an `X-Hive` header (blocks cross-site requests) and a local Host header (blocks DNS rebinding).
@@ -97,3 +104,6 @@ Every sync or chat edit commits to the **vault's** repo, never to the code repo,
 ## Roadmap ideas
 S3 sync of the vault (versioned bucket + KMS) · Bedrock provider option · embeddings for semantic search ·
 calendar ingestion for better gap detection · git-commit signals for time · client portal lens (read-only share).
+
+## License
+MIT, see [LICENSE](LICENSE).

@@ -17,7 +17,7 @@ from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import crm, invoices, pipeline, toggl
+from . import __version__, crm, doctor, invoices, pipeline, toggl
 from .sections import contract_sections
 from .agent import Agent, claude_available
 from . import creds
@@ -100,16 +100,17 @@ class Revalidate(StaticFiles):
         return resp
 
 
-def create_app(vault_root: Path | None = None) -> FastAPI:
+def create_app(vault_root: Path | None = None, allow_hosts: tuple[str, ...] = ()) -> FastAPI:
     settings = load_settings()
     hive = Hive(vault_root or settings.vault)
-    app = FastAPI(title="HIVE", version="0.1.0")
+    app = FastAPI(title="HIVE", version=__version__)
     app.state.hive = hive
+    allowed = ALLOWED_HOSTS | set(allow_hosts)  # tests add "testserver"; production never adds anything
 
     @app.middleware("http")
     async def guard(request: Request, call_next):
         host = (request.headers.get("host") or "").rsplit(":", 1)[0].strip("[]")
-        if host not in ALLOWED_HOSTS and host != "testserver":
+        if host not in allowed:
             return JSONResponse({"detail": "forbidden host"}, status_code=403)
         if request.url.path.startswith("/api") and request.method not in ("GET", "HEAD", "OPTIONS"):
             if request.headers.get("x-hive") != "1":
@@ -124,7 +125,7 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
     def health():
         s = read_secrets()
         login = gmail_login()
-        return {"vault": str(hive.vault.root), "claude": claude_available(),
+        return {"version": __version__, "vault": str(hive.vault.root), "claude": claude_available(),
                 "mail_configured": login is not None, "mail_source": login[2] if login else None,
                 "secrets_file": str(SECRETS_FILE), "gmail_user": login[0] if login else s.get("HIVE_GMAIL_USER")}
 
@@ -189,8 +190,6 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
         keep = set(g.ego(root, depth)) if root else set(g.nodes)
         keep = {v for v in keep if (tags or g.nodes[v]["type"] != "tag") and (demo or not g.nodes[v]["demo"])
                 and g.nodes[v]["type"] not in hidden}
-        if not tags:
-            keep = {v for v in keep if g.nodes[v]["type"] != "tag"}
         return g.to_json(keep)
 
     @app.get("/api/graph/stats")
@@ -314,6 +313,9 @@ def create_app(vault_root: Path | None = None) -> FastAPI:
     def dashboard():
         d = crm.dashboard(hive.graph(), hive.tracker)
         d["last_sync"] = hive.vault.state("last_sync")
+        age = doctor.sync_age_hours(d["last_sync"])  # a stopped scheduled task never *fails* a sync: it just stops
+        d["sync_age_hours"] = None if age is None else round(age, 1)
+        d["sync_stale"] = age is not None and age > doctor.STALE_HOURS
         d["timer"] = hive.tracker.timer()
         return d
 

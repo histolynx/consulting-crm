@@ -56,6 +56,9 @@ export function Dashboard({ tick }) {
     <h3 style="color:var(--red)">⚠ Last sync had problems (${d.last_sync.finished?.replace('T', ' ')})</h3>
     ${d.last_sync.steps.filter((s) => !s.ok).map((s) => html`<div style="font-size:13px"><b>${s.step}:</b> ${s.error}</div>`)}
     <div class="dim" style="font-size:12px;margin-top:6px">Emails stay queued in the inbox until this is fixed; nothing is lost.</div></div>`}
+  ${d.sync_stale && html`<div class="card" style="margin-bottom:16px;border-color:var(--amber)">
+    <h3 style="color:var(--amber)">⚠ No sync for ${Math.round(d.sync_age_hours)} hours</h3>
+    <div style="font-size:13px">The hourly <b>HIVE Sync</b> task may have stopped (moved folder, deleted task, laptop asleep). Run <code>python -m hive doctor</code> in the repo, or click <b>Sync mail</b> to run one now.</div></div>`}
   <div class="kpis">
     <${Kpi} label="Active contracts" value=${compactMoney(k.active_value)} sub=${`${k.active_contracts} running`} onClick=${() => go('contracts')} />
     <${Kpi} label="Pipeline (weighted)" value=${compactMoney(k.pipeline_weighted)} sub=${`${k.pipeline_count} deals in play`} color="var(--violet)" onClick=${() => go('contracts')} />

@@ -20,12 +20,13 @@ from hive.vault import Vault  # noqa: E402
 
 SENSITIVE_TYPES = {"client", "contact", "contract", "project", "profile"}
 MIN_LEN = 4
-IGNORE = {"me", "your name", "your business name"}
+IGNORE = {"me", "your name", "your business name",
+          # corporate suffixes: an unquoted YAML flow list turns "Acme, Inc." into the aliases "Acme" and "Inc."
+          "inc", "inc.", "llc", "llc.", "ltd", "ltd.", "corp", "corp.", "co.", "gmbh", "plc"}
 SKIP_PREFIXES = ("vault/", "web/vendor/")  # private repo; verified third-party code
 
 
-def sensitive_terms() -> set[str]:
-    vault = ROOT / "vault"
+def sensitive_terms(vault: Path = ROOT / "vault") -> set[str]:
     if not vault.exists():
         return set()
     terms: set[str] = set()

@@ -48,6 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("brief")
     sub.add_parser("init", help="scaffold the vault from vault-template/ and make it its own git repo")
     sub.add_parser("orchestrate", help="scan watched folders, classify new work files, notify")
+    sub.add_parser("doctor", help="check the venv, Claude login, Gmail, last sync age and the scheduled tasks' paths")
     sub.add_parser("fetch")
     sub.add_parser("gaps")
     ac = sub.add_parser("acts", help="import parsed legislative acts (JSON) as a knowledge graph in the Ideas area")
@@ -85,6 +86,9 @@ def main(argv: list[str] | None = None) -> int:
     vault = Vault(load_settings().vault)
     if a.cmd == "orchestrate":
         out = orchestrate(vault)
+    elif a.cmd == "doctor":
+        from . import doctor
+        out = doctor.run(vault)
     elif a.cmd == "sync":
         out = pipeline.sync(vault, fetch=not a.no_fetch, ingest=not a.no_ingest)
     elif a.cmd == "brief":
@@ -110,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
         from .timetrack import TimeTracker
         out = TimeTracker(vault).detect_gaps(Graph.build(vault.load_all()))
     print(json.dumps(out, indent=2, default=str))
-    failed = isinstance(out, dict) and any(not st.get("ok", True) for st in out.get("steps", []))
+    failed = isinstance(out, dict) and (any(not st.get("ok", True) for st in out.get("steps", [])) or out.get("ok") is False)
     return 1 if failed else 0
 
 

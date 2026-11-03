@@ -56,6 +56,7 @@ VAULT_GITIGNORE = """# volatile HIVE state (audit.jsonl and mail.json ARE tracke
 .hive/sync.lock
 .obsidian/workspace*.json
 .trash/
+*.tmp
 """
 
 

@@ -39,7 +39,7 @@ def test_summary_export_is_refused_with_instructions(sym):
 
 
 def test_non_text_payload_is_a_clean_400(sym):
-    c = TestClient(create_app(sym.root))
+    c = TestClient(create_app(sym.root, allow_hosts=("testserver",)))
     r = c.post("/api/time/import/preview", json={"csv": {"value": "x"}}, headers=H)
     assert r.status_code == 400 and "text" in r.json()["detail"]
     assert toggl.parse("﻿" + DETAILED)  # BOM-prefixed exports parse fine
@@ -133,7 +133,7 @@ def test_editing_imported_duration_drops_exact_seconds(sym):
 
 
 def test_api_section_crud_and_import(sym):
-    c = TestClient(create_app(sym.root))
+    c = TestClient(create_app(sym.root, allow_hosts=("testserver",)))
     r = c.post("/api/contracts/section", json={"path": "contracts/Acme SOW.md", "name": "Ingest pipeline",
                                               "budget_hours": 56, "match": ["1.Ingest"]}, headers=H).json()
     assert {"name": "Ingest pipeline", "budget_hours": 56.0, "match": ["1.Ingest"]} in r["sections"]

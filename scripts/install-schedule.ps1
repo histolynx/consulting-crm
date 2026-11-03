@@ -1,7 +1,10 @@
 # Register (or -Remove) Windows scheduled tasks for HIVE:
-#   "HIVE Sync"  hourly   -> python -m hive sync   (fetch mail, Claude ingest, push drafts, time gaps, git commit)
-#   "HIVE Brief" 07:30    -> python -m hive brief  (Claude writes briefings/<today>.md)
-# Runs as the current user, only when logged on. Output is appended to vault/.hive/scheduler.log.
+#   "HIVE Sync"         hourly    -> python -m hive sync        (fetch mail, Claude ingest, push drafts, time gaps, git commit)
+#   "HIVE Orchestrator" 15 min    -> python -m hive orchestrate (watch work folders, propose filing)
+#   "HIVE Brief"        07:30     -> python -m hive brief       (Claude writes briefings/<today>.md)
+# Runs as the current user, only when logged on. Output is appended to vault/.hive/scheduler.log as UTF-8
+# (PowerShell's own `*>>` redirection writes UTF-16, which grep/tail can't read).
+# The tasks store this folder's absolute path: re-run this script after moving the repo (python -m hive doctor checks).
 param([switch]$Remove, [string]$BriefAt = '07:30')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -15,7 +18,7 @@ if ($Remove) {
 if (-not (Test-Path $py)) { throw "venv missing: run .\hive.ps1 -Setup first" }
 
 function New-HiveAction([string]$cmd) {
-    $arg = "-NoProfile -WindowStyle Hidden -Command `"`$env:PYTHONPATH='$root\server'; & '$py' -m hive $cmd *>> '$log'`""
+    $arg = "-NoProfile -WindowStyle Hidden -Command `"[Console]::OutputEncoding=[Text.Encoding]::UTF8; `$env:PYTHONIOENCODING='utf-8'; `$env:PYTHONPATH='$root\server'; & '$py' -m hive $cmd *>&1 | Out-File -Append -Encoding utf8 -FilePath '$log'`""
     New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg -WorkingDirectory $root
 }
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 30)

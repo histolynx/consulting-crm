@@ -55,9 +55,9 @@ def build(target: Path) -> None:
     W("clients/Larkspur Analytics.md", {"type": "client", "status": "active", "industry": "Retail analytics",
       "website": "larkspur.example", "aliases": ["Larkspur"], "tags": ["client", "data-platform"]},
       "# Larkspur Analytics\n\nMid-size retail analytics firm modernising their warehouse. Referred by [[Priya Raman]].\n")
-    W("clients/Helio Health.md", {"type": "client", "status": "active", "industry": "Healthcare",
-      "website": "heliohealth.example", "tags": ["client", "llm", "hipaa"]},
-      "# Helio Health\n\nClinical-notes summarisation with LLMs. Strict #hipaa constraints.\n")
+    W("clients/Lumen Health.md", {"type": "client", "status": "active", "industry": "Healthcare",
+      "website": "lumenhealth.example", "tags": ["client", "llm", "hipaa"]},
+      "# Lumen Health\n\nClinical-notes summarisation with LLMs. Strict #hipaa constraints.\n")
     W("clients/Cobalt Freight.md", {"type": "client", "status": "prospect", "industry": "Logistics",
       "tags": ["client", "graph"]}, "# Cobalt Freight\n\nWants a route/partner knowledge graph.\n")
     W("clients/Juniper Robotics.md", {"type": "client", "status": "prospect", "industry": "Robotics",
@@ -65,10 +65,10 @@ def build(target: Path) -> None:
 
     # ---- contacts
     people = [
-        ("Maya Chen", "Larkspur Analytics", "VP Data", "maya.chen@larkspur.example", "champion", -3),
+        ("Elena Marsh", "Larkspur Analytics", "VP Data", "elena.marsh@larkspur.example", "champion", -3),
         ("Tom Alvarez", "Larkspur Analytics", "Staff Data Engineer", "tom@larkspur.example", "technical", -6),
-        ("Dr. Anika Rao", "Helio Health", "CMIO", "arao@heliohealth.example", "decision-maker", -2),
-        ("Ben Okafor", "Helio Health", "ML Lead", "ben.okafor@heliohealth.example", "technical", -30),
+        ("Dr. Anika Rao", "Lumen Health", "CMIO", "arao@lumenhealth.example", "decision-maker", -2),
+        ("Ben Okafor", "Lumen Health", "ML Lead", "ben.okafor@lumenhealth.example", "technical", -30),
         ("Sofia Lindqvist", "Cobalt Freight", "COO", "sofia@cobaltfreight.example", "decision-maker", -1),
         ("Marcus Webb", "Juniper Robotics", "Head of Field Ops", "mwebb@juniper.example", "champion", -9),
         ("Priya Raman", "", "Former colleague", "priya.raman@example.com", "referrer", -45),
@@ -87,16 +87,16 @@ def build(target: Path) -> None:
     W("contracts/Larkspur Lakehouse Migration.md", {
         "type": "contract", "client": "[[Larkspur Analytics]]", "status": "active", "value": 48000, "rate": 175,
         "rate_unit": "hour", "currency": "USD", "start": d(-40), "end": d(21), "budget_hours": 274,
-        "payment_terms_days": 30, "stakeholders": ["[[Maya Chen]]", "[[Tom Alvarez]]"], "tags": ["contract", "data-platform", "aws"]},
+        "payment_terms_days": 30, "stakeholders": ["[[Elena Marsh]]", "[[Tom Alvarez]]"], "tags": ["contract", "data-platform", "aws"]},
       "# Larkspur Lakehouse Migration\n\n## Scope\nMigrate Redshift marts to an Iceberg lakehouse on S3 + Athena; dbt tests.\n"
       "Uses [[dbt Testing Playbook]].\n\n## Tasks\n"
-      f"- [ ] Deliver cut-over runbook 📅 {d(2)}\n- [ ] Cost review with [[Maya Chen]] 📅 {d(5)}\n"
+      f"- [ ] Deliver cut-over runbook 📅 {d(2)}\n- [ ] Cost review with [[Elena Marsh]] 📅 {d(5)}\n"
       f"- [x] Iceberg POC ✅ {d(-12)}\n")
-    W("contracts/Helio Clinical Summarizer.md", {
-        "type": "contract", "client": "[[Helio Health]]", "status": "active", "value": 60000, "rate": 1400,
+    W("contracts/Lumen Clinical Summarizer.md", {
+        "type": "contract", "client": "[[Lumen Health]]", "status": "active", "value": 60000, "rate": 1400,
         "rate_unit": "day", "currency": "USD", "start": d(-20), "end": d(70), "budget_hours": 340,
         "stakeholders": ["[[Dr. Anika Rao]]", "[[Ben Okafor]]"], "tags": ["contract", "llm", "hipaa", "aws"]},
-      "# Helio Clinical Summarizer\n\n## Scope\nBedrock-based clinical note summarisation with eval harness.\n"
+      "# Lumen Clinical Summarizer\n\n## Scope\nBedrock-based clinical note summarisation with eval harness.\n"
       "Patterns: [[GraphRAG Pattern]], [[AWS Bedrock Cost Guardrails]].\n\n## Tasks\n"
       f"- [ ] Eval set v2 signed off by [[Dr. Anika Rao]] 📅 {d(-1)}\n- [ ] PHI redaction test pass 📅 {d(6)}\n")
     W("contracts/Cobalt Partner Graph.md", {
@@ -115,18 +115,18 @@ def build(target: Path) -> None:
     # ---- knowledge
     W("knowledge/GraphRAG Pattern.md", {"type": "note", "tags": ["knowledge", "llm", "graph"]},
       "# GraphRAG Pattern\n\nEntity extraction -> graph -> community summaries -> retrieval by subgraph.\n\n"
-      "Used in:: [[Helio Clinical Summarizer]]\nCandidate:: [[Cobalt Partner Graph]]\n")
+      "Used in:: [[Lumen Clinical Summarizer]]\nCandidate:: [[Cobalt Partner Graph]]\n")
     W("knowledge/AWS Bedrock Cost Guardrails.md", {"type": "note", "tags": ["knowledge", "aws", "llm"]},
-      "# AWS Bedrock Cost Guardrails\n\nBudgets + per-model routing (small model for triage). Used in:: [[Helio Clinical Summarizer]]\n")
+      "# AWS Bedrock Cost Guardrails\n\nBudgets + per-model routing (small model for triage). Used in:: [[Lumen Clinical Summarizer]]\n")
     W("knowledge/dbt Testing Playbook.md", {"type": "note", "tags": ["knowledge", "data-platform"]},
       "# dbt Testing Playbook\n\nContracts, unit tests, freshness. Used in:: [[Larkspur Lakehouse Migration]]\n"
       "Mentions Juniper Field Assistant as a possible docs-QA eval source.\n")
 
     # ---- emails & meetings (drive gap detection + last-contact)
     emails = [
-        (weekday_back(1), "Cut-over window", "Maya Chen", "Larkspur Analytics", "Larkspur Lakehouse Migration", True),
+        (weekday_back(1), "Cut-over window", "Elena Marsh", "Larkspur Analytics", "Larkspur Lakehouse Migration", True),
         (weekday_back(2), "Iceberg partitioning question", "Tom Alvarez", "Larkspur Analytics", "Larkspur Lakehouse Migration", False),
-        (weekday_back(1), "Eval set feedback", "Dr. Anika Rao", "Helio Health", "Helio Clinical Summarizer", True),
+        (weekday_back(1), "Eval set feedback", "Dr. Anika Rao", "Lumen Health", "Lumen Clinical Summarizer", True),
         (weekday_back(3), "SOW redlines", "Sofia Lindqvist", "Cobalt Freight", "Cobalt Partner Graph", True),
         (weekday_back(7), "Field assistant demo?", "Marcus Webb", "Juniper Robotics", "Juniper Field Assistant", False),
     ]
@@ -136,20 +136,20 @@ def build(target: Path) -> None:
           "tags": ["email"]},
           f"# {subj}\n\n## Summary\n{who} wrote about {subj.lower()}.\n\n## Action items\n- [ ] Reply to [[{who}]] 📅 {d(1)}\n")
     W(f"meetings/{weekday_back(2)} Larkspur weekly.md", {"type": "meeting", "date": weekday_back(2), "duration": 45,
-      "attendees": ["[[Maya Chen]]", "[[Tom Alvarez]]"], "client": "[[Larkspur Analytics]]",
+      "attendees": ["[[Elena Marsh]]", "[[Tom Alvarez]]"], "client": "[[Larkspur Analytics]]",
       "contract": "[[Larkspur Lakehouse Migration]]", "tags": ["meeting"]}, "# Larkspur weekly\n\nAgreed cut-over plan.\n")
-    W(f"meetings/{d(2)} Helio steering.md", {"type": "meeting", "date": d(2), "duration": 60,
-      "attendees": ["[[Dr. Anika Rao]]", "[[Ben Okafor]]"], "client": "[[Helio Health]]",
-      "contract": "[[Helio Clinical Summarizer]]", "tags": ["meeting"]}, f"# Helio steering\n\n- [ ] Prep eval dashboard 📅 {d(1)}\n")
+    W(f"meetings/{d(2)} Lumen steering.md", {"type": "meeting", "date": d(2), "duration": 60,
+      "attendees": ["[[Dr. Anika Rao]]", "[[Ben Okafor]]"], "client": "[[Lumen Health]]",
+      "contract": "[[Lumen Clinical Summarizer]]", "tags": ["meeting"]}, f"# Lumen steering\n\n- [ ] Prep eval dashboard 📅 {d(1)}\n")
 
-    # ---- time (leave the most recent Helio day unlogged so gap detection has something to find)
+    # ---- time (leave the most recent Lumen day unlogged so gap detection has something to find)
     tt = TimeTracker(v)
     for n in range(2, 12):
         day = weekday_back(n)
         tt.add(day, {"contract": "Larkspur Lakehouse Migration", "start": "09:00", "end": "12:30",
                      "description": "Lakehouse migration work", "source": "demo"}, actor="demo")
         if n % 2 == 0:
-            tt.add(day, {"contract": "Helio Clinical Summarizer", "start": "13:30", "end": "17:00",
+            tt.add(day, {"contract": "Lumen Clinical Summarizer", "start": "13:30", "end": "17:00",
                          "description": "Eval harness + prompt iterations", "source": "demo"}, actor="demo")
     tt.add(weekday_back(1), {"contract": "Larkspur Lakehouse Migration", "start": "09:00", "end": "11:00",
                              "description": "Cut-over rehearsal", "source": "demo"}, actor="demo")

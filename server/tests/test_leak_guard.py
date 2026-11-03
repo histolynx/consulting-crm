@@ -14,3 +14,14 @@ def test_staged_files_skip_the_vault_and_vendored_third_party_code(monkeypatch):
                   "server/hive/app.py\nREADME.md\n")
     monkeypatch.setattr(guard.subprocess, "run", lambda *a, **k: Done())
     assert guard.staged_files() == ["server/hive/app.py", "README.md"]
+
+
+def test_sensitive_terms_come_from_business_notes_minus_corporate_suffixes(tmp_path):
+    """`aliases: [Acme Corp, Inc.]` (unquoted) yields the alias "Inc.", which would flag every licence header."""
+    v = tmp_path / "vault"
+    (v / "clients").mkdir(parents=True)
+    (v / "knowledge").mkdir()
+    (v / "clients" / "Acme.md").write_text("---\ntype: client\naliases: [Acme Corp, Inc., Acme]\nwebsite: acme.test\n---\n# Acme\n",
+                                           encoding="utf-8")
+    (v / "knowledge" / "Graph tricks.md").write_text("---\ntype: note\n---\nnot a business entity\n", encoding="utf-8")
+    assert guard.sensitive_terms(v) == {"Acme", "Acme Corp", "acme.test"}

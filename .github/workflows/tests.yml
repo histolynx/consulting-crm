@@ -1,0 +1,30 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    # HIVE is a Windows desktop app and server/requirements.lock is resolved for win_amd64 / cp314 with hashes,
+    # so CI installs it exactly the way hive.ps1 does. Actions are pinned by commit SHA (14-day cooldown applied).
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Install hash-locked dependencies
+        run: python -m pip install --require-hashes --no-deps -r server/requirements.lock
+      - name: Test
+        run: python -m pytest server/tests -q -p no:cacheprovider
+        env:
+          PYTHONPATH: server
+          GIT_AUTHOR_NAME: ci
+          GIT_AUTHOR_EMAIL: ci@example.com
+          GIT_COMMITTER_NAME: ci
+          GIT_COMMITTER_EMAIL: ci@example.com
